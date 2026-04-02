@@ -36,6 +36,16 @@ async function apiFetch(path, options = {}) {
   return json.data
 }
 
+function buildQuizQuery(documentId, options = {}) {
+  const params = new URLSearchParams({ documentId })
+
+  if (options.type) {
+    params.set('type', options.type)
+  }
+
+  return `/quiz?${params.toString()}`
+}
+
 // ── Documents ──────────────────────────────────────────────────────
 export const documentsApi = {
   // List all user's documents
@@ -107,8 +117,8 @@ export const quizApi = {
     }),
 
   // Load the latest quiz state for a document
-  getLatest: (documentId) =>
-    apiFetch(`/quiz?documentId=${encodeURIComponent(documentId)}`),
+  getLatest: (documentId, options = {}) =>
+    apiFetch(buildQuizQuery(documentId, options)),
 
   // Start a background pre-generation request after upload
   preGenerate: (documentId, options = {}) =>

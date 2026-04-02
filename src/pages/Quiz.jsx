@@ -85,7 +85,7 @@ export default function Quiz({ documents, activeDocument, setSelectedDocumentId 
     }
 
     try {
-      const result = await quizApi.getLatest(documentId)
+      const result = await quizApi.getLatest(documentId, { type: 'mcq' })
       const status = result?.status || result?.quiz?.status || 'missing'
 
       if (status === 'ready' && (result?.questions?.length || result?.quiz?.questions?.length)) {

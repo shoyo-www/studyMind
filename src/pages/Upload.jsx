@@ -71,17 +71,21 @@ export default function Upload({ refreshAppData, setSelectedDocumentId, setScree
       setLastDocumentId(result.document.id)
 
       if (result.analysisAvailable) {
-        void quizApi.preGenerate(result.document.id, {
-          count: 5,
-          type: 'mcq',
-        }).catch(() => {
-          // Quiz page will expose the retry path if background generation fails.
-        })
+        void Promise.allSettled([
+          quizApi.preGenerate(result.document.id, {
+            count: 5,
+            type: 'mcq',
+          }),
+          quizApi.preGenerate(result.document.id, {
+            count: 50,
+            type: 'flashcard',
+          }),
+        ])
       }
 
       setSuccessMessage(
         result.analysisAvailable
-          ? `${result.document.title} is ready. Chat and roadmap are available now, and your quiz is being prepared in the background.`
+          ? `${result.document.title} is ready. Chat and roadmap are available now, and your quiz plus 50 flashcards are being prepared in the background.`
           : `${result.document.title} uploaded successfully. AI analysis currently works best for PDF documents.`
       )
     } catch (uploadError) {
@@ -186,6 +190,15 @@ export default function Upload({ refreshAppData, setSelectedDocumentId, setScree
                   className="text-xs px-3 py-1.5 rounded-lg bg-white border border-emerald-200 hover:bg-emerald-50 transition-colors"
                 >
                   View roadmap
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedDocumentId(lastDocumentId)
+                    setScreen('flashcards')
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white border border-emerald-200 hover:bg-emerald-50 transition-colors"
+                >
+                  Open flashcards
                 </button>
               </div>
             )}

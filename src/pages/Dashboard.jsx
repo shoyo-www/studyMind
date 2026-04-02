@@ -92,6 +92,13 @@ export default function Dashboard({
           primary: false,
         },
         {
+          color: 'bg-sky-400',
+          text: `Review the flashcards deck from ${topDocument.title}`,
+          btn: t('common.review'),
+          onClick: () => openDocument(topDocument.id, 'flashcards'),
+          primary: false,
+        },
+        {
           color: 'bg-amber-400',
           text: `Ask AI questions from ${topDocument.title}`,
           btn: t('common.start'),
@@ -102,7 +109,7 @@ export default function Dashboard({
     : [
         {
           color: 'bg-zinc-400',
-          text: 'Upload your first PDF to unlock chat, quiz, and roadmap.',
+          text: 'Upload your first PDF to unlock chat, quiz, flashcards, and roadmap.',
           btn: t('dashboard.uploadNew'),
           onClick: () => setScreen('upload'),
           primary: true,

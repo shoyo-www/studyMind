@@ -45,7 +45,16 @@ const QUIZ_COLUMNS = [
   'generation_completed_at',
   'created_at',
 ].join(', ')
-const DEFAULT_COUNT = 10
+const DEFAULT_COUNT_BY_TYPE = {
+  mcq: 10,
+  truefalse: 10,
+  flashcard: 50,
+}
+const MAX_COUNT_BY_TYPE = {
+  mcq: 20,
+  truefalse: 20,
+  flashcard: 50,
+}
 const DEFAULT_FALLBACK_MODEL = 'gemini-2.5-flash-lite'
 
 function buildPrompt({ type, count, topic }) {
@@ -106,15 +115,25 @@ function shouldTryFallbackModel(error) {
   )
 }
 
+function getRequestedCount(type, rawCount) {
+  const fallbackCount = DEFAULT_COUNT_BY_TYPE[type] || DEFAULT_COUNT_BY_TYPE.mcq
+  const maxCount = MAX_COUNT_BY_TYPE[type] || MAX_COUNT_BY_TYPE.mcq
+  return Math.min(maxCount, Math.max(1, Number(rawCount) || fallbackCount))
+}
+
 function normalizeQuestions(rawQuestions = [], type = 'mcq') {
   return rawQuestions
     .map((question, index) => {
       if (type === 'flashcard') {
+        const front = question?.front || question?.question || `Flashcard ${index + 1}`
+        const back = question?.back || question?.explanation || 'Answer unavailable'
         return {
-          question: question?.front || `Flashcard ${index + 1}`,
-          options: [question?.back || 'Answer unavailable'],
+          question: front,
+          front,
+          options: [back],
           correct: 0,
-          explanation: question?.back || '',
+          explanation: back,
+          back,
           topic: question?.topic || 'General',
         }
       }
@@ -206,7 +225,12 @@ function chooseLatestQuiz(quizzes = []) {
   )
 }
 
-async function loadLatestQuiz(supabase, userId, documentId, source = null) {
+async function loadLatestQuiz(supabase, userId, documentId, options = {}) {
+  const {
+    source = null,
+    type = null,
+  } = options
+
   let query = supabase
     .from('quizzes')
     .select(QUIZ_COLUMNS)
@@ -217,6 +241,10 @@ async function loadLatestQuiz(supabase, userId, documentId, source = null) {
 
   if (source) {
     query = query.eq('source', source)
+  }
+
+  if (type && ALLOWED_TYPES.has(type)) {
+    query = query.eq('type', type)
   }
 
   const { data, error } = await query
@@ -308,6 +336,8 @@ async function generateQuestionsWithFallback({ document, count, topic, type, pdf
 async function handleGet(req, res) {
   const user = await requireAuth(req)
   const documentId = req.query?.documentId
+  const requestedType = req.query?.type
+  const type = ALLOWED_TYPES.has(requestedType) ? requestedType : null
 
   if (!documentId) {
     return fail(res, { status: 400, message: 'documentId is required' })
@@ -316,7 +346,7 @@ async function handleGet(req, res) {
   const supabase = getAdminSupabase()
   await fetchDocument(supabase, user.id, documentId)
 
-  const latestQuiz = await loadLatestQuiz(supabase, user.id, documentId)
+  const latestQuiz = await loadLatestQuiz(supabase, user.id, documentId, { type })
   return ok(res, buildQuizResponse(latestQuiz))
 }
 
@@ -328,13 +358,13 @@ async function handlePost(req, res) {
   const {
     documentId,
     topic = null,
-    count: rawCount = DEFAULT_COUNT,
+    count: rawCount,
     type: rawType = 'mcq',
     mode: rawMode = QUIZ_SOURCE.manual,
   } = req.body || {}
 
-  const count = Math.min(20, Math.max(1, Number(rawCount) || DEFAULT_COUNT))
   const type = ALLOWED_TYPES.has(rawType) ? rawType : 'mcq'
+  const count = getRequestedCount(type, rawCount)
   const source = rawMode === QUIZ_SOURCE.autoUpload ? QUIZ_SOURCE.autoUpload : QUIZ_SOURCE.manual
 
   if (!documentId) {
@@ -352,7 +382,10 @@ async function handlePost(req, res) {
   }
 
   if (source === QUIZ_SOURCE.autoUpload) {
-    const existingAutoQuiz = await loadLatestQuiz(supabase, user.id, documentId, QUIZ_SOURCE.autoUpload)
+    const existingAutoQuiz = await loadLatestQuiz(supabase, user.id, documentId, {
+      source: QUIZ_SOURCE.autoUpload,
+      type,
+    })
     if (existingAutoQuiz && existingAutoQuiz.source === QUIZ_SOURCE.autoUpload && existingAutoQuiz.status !== QUIZ_STATUS.failed) {
       return ok(res, buildQuizResponse(existingAutoQuiz))
     }

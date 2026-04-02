@@ -54,7 +54,7 @@ create table if not exists public.quizzes (
   status text not null default 'ready' check (status in ('pending', 'ready', 'failed')),
   source text not null default 'manual' check (source in ('manual', 'auto_upload')),
   error_message text,
-  requested_count integer not null default 10 check (requested_count between 1 and 20),
+  requested_count integer not null default 10 check (requested_count between 1 and 50),
   generated_with_model text,
   generation_started_at timestamptz,
   generation_completed_at timestamptz,

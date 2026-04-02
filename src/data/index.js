@@ -74,6 +74,7 @@ export const NAV_ITEMS = [
   { id: 'chat',      label: 'Chat with Notes',  section: null        },
   { id: 'roadmap',   label: 'Roadmap',          section: 'Learn'     },
   { id: 'quiz',      label: 'Quiz & Practice',  section: null        },
+  { id: 'flashcards',label: 'Flashcards',       section: null        },
   { id: 'progress',  label: 'My Progress',      section: null        },
   { id: 'pricing',   label: 'Pricing',          section: 'Account'   },
 ]
