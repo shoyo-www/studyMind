@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  html, body, #root { height: 100%; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background-color: #FAFAFA;
+    color: #111111;
+    -webkit-font-smoothing: antialiased;
+  }
+  [data-lang='hi'] body,
+  [data-lang='hi'] { font-family: 'Noto Sans Devanagari', 'DM Sans', system-ui, sans-serif; }
+  [data-lang='hi'] .font-display { font-family: 'Noto Sans Devanagari', system-ui, sans-serif; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 2px; }
+}
+
+@layer utilities {
+  .font-display { font-family: 'Syne', system-ui, sans-serif; }
+}
