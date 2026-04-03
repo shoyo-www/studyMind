@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import Sidebar   from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import Upload    from './pages/Upload'
@@ -127,6 +128,7 @@ export default function App() {
       {/* ── Right AI Chat Panel ── */}
       <ChatPanel activeDocument={activeDocument} />
       <BottomNav screen={resolvedScreen} setScreen={navigate} />
+      <Analytics />
     </div>
   )
 }
