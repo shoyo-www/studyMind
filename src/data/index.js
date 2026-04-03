@@ -71,10 +71,8 @@ export const SUBJECTS = [
 export const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard',       section: 'Overview'  },
   { id: 'upload',    label: 'Upload Material',  section: null        },
-  { id: 'chat',      label: 'Chat with Notes',  section: null        },
   { id: 'roadmap',   label: 'Roadmap',          section: 'Learn'     },
   { id: 'quiz',      label: 'Quiz & Practice',  section: null        },
   { id: 'flashcards',label: 'Flashcards',       section: null        },
   { id: 'progress',  label: 'My Progress',      section: null        },
-  { id: 'pricing',   label: 'Pricing',          section: 'Account'   },
 ]

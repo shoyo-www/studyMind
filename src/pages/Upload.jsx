@@ -9,7 +9,8 @@ const ALLOWED_FILE_TYPES = new Set([
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ])
 
-export default function Upload({ refreshAppData, setSelectedDocumentId, setScreen }) {
+export default function Upload({
+  onOpenSidebar, refreshAppData, setSelectedDocumentId, setScreen }) {
   const { t } = useT()
   const fileInputRef = useRef(null)
   const [link, setLink] = useState('')
@@ -71,16 +72,25 @@ export default function Upload({ refreshAppData, setSelectedDocumentId, setScree
       setLastDocumentId(result.document.id)
 
       if (result.analysisAvailable) {
-        void Promise.allSettled([
-          quizApi.preGenerate(result.document.id, {
-            count: 5,
-            type: 'mcq',
-          }),
-          quizApi.preGenerate(result.document.id, {
-            count: 50,
-            type: 'flashcard',
-          }),
-        ])
+        void (async () => {
+          try {
+            await quizApi.preGenerate(result.document.id, {
+              count: 5,
+              type: 'mcq',
+            })
+          } catch {
+            // Background preparation is best-effort.
+          }
+
+          try {
+            await quizApi.preGenerate(result.document.id, {
+              count: 50,
+              type: 'flashcard',
+            })
+          } catch {
+            // Background preparation is best-effort.
+          }
+        })()
       }
 
       setSuccessMessage(
@@ -118,7 +128,7 @@ export default function Upload({ refreshAppData, setSelectedDocumentId, setScree
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <TopBar title={t('upload.title')} subtitle={t('upload.subtitle')} />
-      <div className="flex-1 overflow-y-auto px-8 py-7 max-w-2xl w-full mx-auto">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 sm:py-7 max-w-2xl w-full mx-auto">
         <input
           ref={fileInputRef}
           type="file"
@@ -176,11 +186,11 @@ export default function Upload({ refreshAppData, setSelectedDocumentId, setScree
                 <button
                   onClick={() => {
                     setSelectedDocumentId(lastDocumentId)
-                    setScreen('chat')
+                    setScreen('dashboard')
                   }}
                   className="text-xs px-3 py-1.5 rounded-lg bg-white border border-emerald-200 hover:bg-emerald-50 transition-colors"
                 >
-                  Open chat
+                  Open assistant
                 </button>
                 <button
                   onClick={() => {
@@ -238,7 +248,7 @@ export default function Upload({ refreshAppData, setSelectedDocumentId, setScree
 
         <div>
           <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300 mb-3">{t('upload.autoGenerate')}</div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {autoFeatures.map((feature) => (
               <div key={feature.title} className="flex gap-3.5 bg-white border border-zinc-100 rounded-xl p-4">
                 <div className="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center shrink-0 text-base">{feature.icon}</div>

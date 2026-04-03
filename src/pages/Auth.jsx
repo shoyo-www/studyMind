@@ -58,7 +58,7 @@ export default function Auth({ onBack, onSuccess, configError = '' }) {
     <div className="min-h-screen flex" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
       {/* Left panel — benefits */}
-      <div className="hidden lg:flex flex-col w-[480px] shrink-0 relative overflow-hidden"
+      <div className="hidden lg:flex flex-col w-[440px] shrink-0 relative overflow-hidden"
         style={{ background: '#111110' }}>
         {/* Subtle grid pattern */}
         <div className="absolute inset-0 opacity-[0.04]"

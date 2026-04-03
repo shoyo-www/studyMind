@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 @layer base {
+  /* Bottom nav offset for mobile content */
+  @media (max-width: 1023px) {
+    :root { --bottom-nav-height: 64px; }
+  }
+
   * { box-sizing: border-box; }
   html, body, #root { height: 100%; margin: 0; padding: 0; }
   body {

@@ -43,6 +43,7 @@ function Notice({ tone = 'neutral', children, action }) {
 }
 
 export default function Dashboard({
+  onOpenSidebar,
   user,
   profile,
   stats,
@@ -100,16 +101,16 @@ export default function Dashboard({
         },
         {
           color: 'bg-amber-400',
-          text: `Ask AI questions from ${topDocument.title}`,
-          btn: t('common.start'),
-          onClick: () => openDocument(topDocument.id, 'chat'),
+          text: `Open the PDF assistant for ${topDocument.title}`,
+          btn: 'Open',
+          onClick: () => openDocument(topDocument.id),
           primary: true,
         },
       ]
     : [
         {
           color: 'bg-zinc-400',
-          text: 'Upload your first PDF to unlock chat, quiz, flashcards, and roadmap.',
+          text: 'Upload your first PDF to unlock the assistant, quiz, flashcards, and roadmap.',
           btn: t('dashboard.uploadNew'),
           onClick: () => setScreen('upload'),
           primary: true,
@@ -119,6 +120,7 @@ export default function Dashboard({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <TopBar
+        onOpenSidebar={onOpenSidebar}
         title={`${greeting}, ${displayName} 👋`}
         subtitle={documents.length ? t('dashboard.tasksToday', { count: tasks.length }) : 'Upload one study document to start your AI workspace.'}
         showLangSwitcher
@@ -129,7 +131,7 @@ export default function Dashboard({
           </button>
         )}
       />
-      <div className="flex-1 overflow-y-auto px-8 py-7">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 sm:py-7">
         {appError && (
           <div className="mb-6">
             <Notice
@@ -145,7 +147,7 @@ export default function Dashboard({
           </div>
         )}
 
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {statsCards.map((card) => <StatCard key={card.label} {...card} />)}
         </div>
 
@@ -155,12 +157,12 @@ export default function Dashboard({
           {appLoading ? (
             <Notice>{t('common.loading')}</Notice>
           ) : documents.length ? (
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               {documents.map((document) => (
                 <DocCard
                   key={document.id}
                   document={document}
-                  onOpen={() => openDocument(document.id, 'chat')}
+                  onOpen={() => openDocument(document.id)}
                   t={t}
                   lang={lang}
                 />
@@ -189,7 +191,7 @@ export default function Dashboard({
             {tasks.map((task, index) => (
               <div key={index} className="flex items-center gap-4 bg-white border border-zinc-100 rounded-xl px-5 py-3.5">
                 <div className={`w-2 h-2 rounded-full shrink-0 ${task.color}`} />
-                <div className="flex-1 text-sm text-zinc-500">{task.text}</div>
+                <div className="flex-1 text-sm text-zinc-500 min-w-0 truncate sm:whitespace-normal sm:overflow-visible">{task.text}</div>
                 <button
                   onClick={task.onClick}
                   className={`text-xs px-3.5 py-1.5 rounded-lg font-medium transition-colors shrink-0 ${task.primary ? 'bg-zinc-900 text-white hover:bg-zinc-700' : 'border border-zinc-200 text-zinc-600 hover:bg-zinc-50'}`}

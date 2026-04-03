@@ -25,7 +25,7 @@ function TopicItem({ topic, isLast, onPractice }) {
       </div>
       <div className="flex-1 pb-8">
         <div className="bg-white border border-zinc-100 rounded-xl p-5 hover:border-zinc-200 transition-colors">
-          <div className="flex items-start justify-between gap-4 mb-3">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
             <div>
               <h3 className={`font-medium text-sm mb-1 ${isCurrent ? 'text-violet-700' : 'text-zinc-800'}`}>{topic.title}</h3>
               <div className="flex items-center gap-4 text-xs text-zinc-400">
@@ -41,7 +41,7 @@ function TopicItem({ topic, isLast, onPractice }) {
               </button>
             )}
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 mt-2">
             {topic.chips.length ? topic.chips.map((chip) => (
               <span key={chip} className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${chipColors[topic.status]}`}>{chip}</span>
             )) : (
@@ -54,7 +54,8 @@ function TopicItem({ topic, isLast, onPractice }) {
   )
 }
 
-export default function Roadmap({ documents, activeDocument, setSelectedDocumentId, setScreen }) {
+export default function Roadmap({
+  onOpenSidebar, documents, activeDocument, setSelectedDocumentId, setScreen }) {
   const { t } = useT()
   const topics = activeDocument ? buildRoadmapTopics(activeDocument).map((topic, index) => ({ ...topic, number: index + 1 })) : []
   const donePct = activeDocument?.pct_covered || 0

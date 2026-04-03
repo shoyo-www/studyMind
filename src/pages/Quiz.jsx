@@ -29,7 +29,8 @@ function getScore(questions, answers) {
   ), 0)
 }
 
-export default function Quiz({ documents, activeDocument, setSelectedDocumentId }) {
+export default function Quiz({
+  onOpenSidebar, documents, activeDocument, setSelectedDocumentId }) {
   const { t } = useT()
   const [quiz, setQuiz] = useState(null)
   const [questions, setQuestions] = useState([])
@@ -238,7 +239,7 @@ export default function Quiz({ documents, activeDocument, setSelectedDocumentId 
           </button>
         )}
       />
-      <div className="flex-1 overflow-y-auto px-8 py-7 max-w-2xl w-full mx-auto">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 sm:py-7 max-w-2xl w-full mx-auto">
         {!!documents.length && (
           <div className="flex flex-wrap gap-2 mb-6">
             {documents.map((document) => (
@@ -273,6 +274,12 @@ export default function Quiz({ documents, activeDocument, setSelectedDocumentId 
         {error && (
           <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
+          </div>
+        )}
+
+        {quiz?.generated_with_model === 'groq-fallback' && (
+          <div className="mb-4 rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-700">
+            This quiz was generated with the backend Groq fallback because the server Gemini quota is currently exhausted.
           </div>
         )}
 

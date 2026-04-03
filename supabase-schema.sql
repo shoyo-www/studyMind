@@ -26,6 +26,7 @@ create table if not exists public.documents (
   storage_path text not null unique,
   total_pages integer not null default 0 check (total_pages >= 0),
   summary text,
+  document_text text,
   topics jsonb not null default '[]'::jsonb,
   file_size bigint,
   mime_type text,

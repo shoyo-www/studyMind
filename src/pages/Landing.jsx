@@ -108,7 +108,7 @@ export default function Landing({ onGetStarted, onLogin }) {
           <div className="font-display font-bold text-xl tracking-tight" style={{ fontFamily: 'Syne, sans-serif' }}>
             Study<span className="text-violet-600">Mind</span>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm text-zinc-500">
+          <div className="hidden md:flex items-center gap-6 text-sm text-zinc-500">
             <a href="#features" className="hover:text-zinc-900 transition-colors">Features</a>
             <a href="#how-it-works" className="hover:text-zinc-900 transition-colors">How it works</a>
             <a href="#pricing" className="hover:text-zinc-900 transition-colors">Pricing</a>
@@ -129,7 +129,7 @@ export default function Landing({ onGetStarted, onLogin }) {
       </nav>
 
       {/* Hero */}
-      <section className="pt-32 pb-24 px-6 text-center relative overflow-hidden">
+      <section className="pt-24 pb-16 sm:pt-32 sm:pb-24 px-4 sm:px-6 text-center relative overflow-hidden">
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full opacity-[0.07]"
@@ -144,7 +144,7 @@ export default function Landing({ onGetStarted, onLogin }) {
           </div>
 
           {/* Headline */}
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-zinc-900 mb-6 leading-tight"
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight text-zinc-900 mb-6 leading-tight"
             style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, letterSpacing: '-0.03em' }}>
             Upload your notes.<br />
             <span className="text-violet-600">Let AI teach you.</span>
@@ -179,7 +179,7 @@ export default function Landing({ onGetStarted, onLogin }) {
         </div>
 
         {/* App mockup */}
-        <div className="relative max-w-5xl mx-auto mt-16">
+        <div className="relative max-w-5xl mx-auto mt-12 hidden sm:block">
           <div className="rounded-2xl border border-zinc-200 shadow-2xl shadow-zinc-900/10 overflow-hidden">
             {/* Browser bar */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-100 bg-zinc-50">
@@ -270,7 +270,7 @@ export default function Landing({ onGetStarted, onLogin }) {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-24 px-6">
+      <section id="features" className="py-14 sm:py-24 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <div className="text-[11px] font-medium uppercase tracking-widest text-violet-500 mb-3">Features</div>
@@ -282,7 +282,7 @@ export default function Landing({ onGetStarted, onLogin }) {
               Not just a PDF reader. A complete AI study system — built around your material, your pace, and your exam.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {FEATURES.map((f, i) => (
               <div key={i} className="bg-white border border-zinc-100 rounded-2xl p-6 hover:border-violet-100 hover:shadow-sm transition-all group">
                 <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-violet-100 transition-colors">
@@ -297,7 +297,7 @@ export default function Landing({ onGetStarted, onLogin }) {
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="py-24 px-6 bg-zinc-50">
+      <section id="how-it-works" className="py-14 sm:py-24 px-4 sm:px-6 bg-zinc-50">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
             <div className="text-[11px] font-medium uppercase tracking-widest text-violet-500 mb-3">How it works</div>
@@ -306,7 +306,7 @@ export default function Landing({ onGetStarted, onLogin }) {
               From notes to exam-ready in 3 steps
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 relative">
             {/* Connector line */}
             <div className="hidden md:block absolute top-8 left-1/3 right-1/3 h-px bg-zinc-200" />
             {STEPS.map((step, i) => (
@@ -325,7 +325,7 @@ export default function Landing({ onGetStarted, onLogin }) {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 px-6">
+      <section className="py-14 sm:py-24 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <div className="text-[11px] font-medium uppercase tracking-widest text-violet-500 mb-3">Testimonials</div>
@@ -334,7 +334,7 @@ export default function Landing({ onGetStarted, onLogin }) {
               Students who study smarter
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {TESTIMONIALS.map((t, i) => (
               <div key={i} className="bg-white border border-zinc-100 rounded-2xl p-6 hover:border-violet-100 hover:shadow-sm transition-all">
                 <StarRating count={t.rating} />
@@ -355,7 +355,7 @@ export default function Landing({ onGetStarted, onLogin }) {
       </section>
 
       {/* Pricing teaser */}
-      <section id="pricing" className="py-24 px-6 bg-zinc-50">
+      <section id="pricing" className="py-14 sm:py-24 px-4 sm:px-6 bg-zinc-50">
         <div className="max-w-3xl mx-auto text-center">
           <div className="text-[11px] font-medium uppercase tracking-widest text-violet-500 mb-3">Pricing</div>
           <h2 className="text-3xl font-bold text-zinc-900 tracking-tight mb-4"
@@ -395,7 +395,7 @@ export default function Landing({ onGetStarted, onLogin }) {
       </section>
 
       {/* Final CTA */}
-      <section className="py-24 px-6">
+      <section className="py-14 sm:py-24 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto text-center">
           <div className="bg-zinc-900 rounded-3xl px-8 py-14">
             <h2 className="text-3xl font-bold text-white mb-4 tracking-tight"

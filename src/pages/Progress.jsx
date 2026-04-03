@@ -21,7 +21,8 @@ function formatPercentage(value) {
   return `${Math.max(0, Math.round(Number(value) || 0))}%`
 }
 
-export default function Progress({ documents = [], setScreen, setSelectedDocumentId }) {
+export default function Progress({
+  onOpenSidebar, documents = [], setScreen, setSelectedDocumentId }) {
   const { t } = useT()
   const [progressData, setProgressData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -91,7 +92,7 @@ export default function Progress({ documents = [], setScreen, setSelectedDocumen
           </button>
         }
       />
-      <div className="flex-1 overflow-y-auto px-8 py-7">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 sm:py-7">
         {error && (
           <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
@@ -108,11 +109,11 @@ export default function Progress({ documents = [], setScreen, setSelectedDocumen
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
               {statCards.map((stat) => <StatCard key={stat.label} {...stat} />)}
             </div>
 
-            <div className="grid grid-cols-2 gap-5 mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-4 sm:mb-5">
               <div className="bg-white border border-zinc-100 rounded-xl p-5">
                 <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300 mb-5">{t('progress.readiness')}</div>
                 <div className="flex flex-col gap-4">

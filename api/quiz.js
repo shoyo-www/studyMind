@@ -14,8 +14,12 @@ import {
   getGeminiModelName,
   makeGeminiFilePart,
   runGeminiTask,
+  shouldSkipGeminiDueToRecentQuota,
+  shouldTryAnotherGeminiModel,
   uploadPdfToGemini,
 } from './_gemini.js'
+import { groqGenerateStudySet, isGroqConfigured } from './_groq.js'
+import { extractPdfText } from './_documentText.js'
 
 const ALLOWED_TYPES = new Set(['mcq', 'truefalse', 'flashcard'])
 const QUIZ_STATUS = {
@@ -100,19 +104,6 @@ function getQuizModelCandidates() {
     process.env.QUIZ_GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-2.5-flash',
     process.env.QUIZ_GEMINI_FALLBACK_MODEL || DEFAULT_FALLBACK_MODEL,
   ].filter((modelName, index, list) => modelName && list.indexOf(modelName) === index)
-}
-
-function shouldTryFallbackModel(error) {
-  const status = Number(error?.status || error?.error?.code || 0)
-  const message = `${error?.message || ''}`.toUpperCase()
-
-  return (
-    [429, 500, 503, 504].includes(status)
-    || message.includes('UNAVAILABLE')
-    || message.includes('HIGH DEMAND')
-    || message.includes('RESOURCE_EXHAUSTED')
-    || message.includes('TEMPORARILY BUSY')
-  )
 }
 
 function getRequestedCount(type, rawCount) {
@@ -276,6 +267,29 @@ async function updateQuizRecord(supabase, quizId, payload) {
   return serializeQuiz(data)
 }
 
+
+function isGeminiQuotaOrBusy(err) {
+  const status  = err?.status || err?.upstreamStatus || 0
+  const message = `${err?.message || ''}`.toLowerCase()
+  // Catch ALL non-input errors: billing (403), quota (429), server (500/503),
+  // auth issues, network errors — anything that warrants trying Groq instead
+  if (status === 400) return false // user input error, don't fall back
+  if (status === 401 && message.includes('invalid api key')) return false
+  return true // fallback for everything else
+}
+
+async function getDocumentText(supabase, document) {
+  try {
+    const { data } = await supabase.from('documents').select('document_text').eq('id', document.id).single()
+    if (data?.document_text?.trim()) return data.document_text
+  } catch { /* fall through */ }
+  const { data: fileData, error } = await supabase.storage.from('documents').download(document.storage_path)
+  if (error) throw error
+  const { text } = await extractPdfText(Buffer.from(await fileData.arrayBuffer()))
+  if (text) supabase.from('documents').update({ document_text: text }).eq('id', document.id).catch(() => {})
+  return text || ''
+}
+
 async function generateQuestionsWithFallback({ document, count, topic, type, pdfBuffer }) {
   const ai = getQuizGeminiClient()
   const modelCandidates = getQuizModelCandidates()
@@ -305,6 +319,7 @@ async function generateQuestionsWithFallback({ document, count, topic, type, pdf
       }), {
         label: `Gemini quiz generation (${modelName})`,
         userMessage: 'Quiz generation is temporarily busy due to AI demand. Please try again in about a minute.',
+        quotaUserMessage: 'Quiz generation is temporarily unavailable because the Gemini API quota for this project has been exhausted.',
       })
 
       const parsed = JSON.parse(extractJsonFromText(result.text))
@@ -321,7 +336,14 @@ async function generateQuestionsWithFallback({ document, count, topic, type, pdf
     } catch (error) {
       lastError = error
 
-      if (index < modelCandidates.length - 1 && shouldTryFallbackModel(error)) {
+      const shouldSkipExtraGeminiFallback =
+        error?.geminiIssueType === 'quota' && isGroqConfigured()
+
+      if (
+        index < modelCandidates.length - 1
+        && shouldTryAnotherGeminiModel(error)
+        && !shouldSkipExtraGeminiFallback
+      ) {
         console.warn(`[Quiz model fallback] ${modelName} failed. Trying next configured quiz model.`)
         continue
       }
@@ -408,44 +430,81 @@ async function handlePost(req, res) {
     generation_completed_at: null,
   })
 
-  try {
-    const { data: fileData, error: fileError } = await supabase.storage
-      .from('documents')
-      .download(document.storage_path)
+  let geminiError = null
+  const shouldBypassGemini = isGroqConfigured() && shouldSkipGeminiDueToRecentQuota()
 
-    if (fileError) throw fileError
-
-    const pdfBuffer = Buffer.from(await fileData.arrayBuffer())
-    const { questions, modelName } = await generateQuestionsWithFallback({
-      document,
-      count,
-      topic,
-      type,
-      pdfBuffer,
-    })
-
-    const readyQuiz = await updateQuizRecord(supabase, quizShell.id, {
-      questions,
-      status: QUIZ_STATUS.ready,
-      error_message: null,
-      generated_with_model: modelName,
-      generation_completed_at: new Date().toISOString(),
-    })
-
-    return ok(res, buildQuizResponse(readyQuiz), 201)
-  } catch (error) {
+  if (shouldBypassGemini) {
+    geminiError = new Error('Quiz generation is temporarily unavailable because the Gemini API quota for this project has been exhausted. Please try again in about a minute.')
+    geminiError.status = 429
+    geminiError.geminiIssueType = 'quota'
+    console.warn('[Quiz] Skipping Gemini because project quota is still cooling down.')
+  } else {
     try {
-      await updateQuizRecord(supabase, quizShell.id, {
-        status: QUIZ_STATUS.failed,
-        error_message: error?.message || 'Quiz generation failed',
+      const { data: fileData, error: fileError } = await supabase.storage
+        .from('documents')
+        .download(document.storage_path)
+
+      if (fileError) throw fileError
+
+      const pdfBuffer = Buffer.from(await fileData.arrayBuffer())
+      const { questions, modelName } = await generateQuestionsWithFallback({
+        document,
+        count,
+        topic,
+        type,
+        pdfBuffer,
+      })
+
+      const readyQuiz = await updateQuizRecord(supabase, quizShell.id, {
+        questions,
+        status: QUIZ_STATUS.ready,
+        error_message: null,
+        generated_with_model: modelName,
         generation_completed_at: new Date().toISOString(),
       })
-    } catch (updateError) {
-      console.error('[Quiz failure persistence error]', updateError)
-    }
 
-    return fail(res, error)
+      return ok(res, buildQuizResponse(readyQuiz), 201)
+    } catch (error) {
+      geminiError = error
+    }
   }
+
+  // ── Groq fallback ─────────────────────────────────────────
+  if (isGeminiQuotaOrBusy(geminiError) && isGroqConfigured()) {
+    console.warn(`[Quiz] Gemini failed (status ${geminiError?.status || 'unknown'}), falling back to Groq`)
+    try {
+      const documentText = await getDocumentText(supabase, document).catch(() => '')
+      const groqItems = await groqGenerateStudySet({
+        documentTitle: document.title,
+        documentText,
+        count,
+        type,
+        topic,
+      })
+      const readyQuiz = await updateQuizRecord(supabase, quizShell.id, {
+        questions: groqItems,
+        status: QUIZ_STATUS.ready,
+        error_message: null,
+        generated_with_model: 'groq-fallback',
+        generation_completed_at: new Date().toISOString(),
+      })
+      return ok(res, buildQuizResponse(readyQuiz), 201)
+    } catch (groqError) {
+      console.error('[Quiz] Groq fallback also failed:', groqError.message)
+    }
+  }
+
+  try {
+    await updateQuizRecord(supabase, quizShell.id, {
+      status: QUIZ_STATUS.failed,
+      error_message: geminiError?.message || 'Quiz generation failed',
+      generation_completed_at: new Date().toISOString(),
+    })
+  } catch (updateError) {
+    console.error('[Quiz failure persistence error]', updateError)
+  }
+
+  return fail(res, geminiError)
 }
 
 export default async function handler(req, res) {

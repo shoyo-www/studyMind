@@ -30,6 +30,10 @@ async function apiFetch(path, options = {}) {
   if (!res.ok || !json?.success) {
     const err = new Error(json?.error || 'Something went wrong')
     err.status = res.status
+    const retryAfter = Number(res.headers.get('Retry-After'))
+    if (Number.isFinite(retryAfter) && retryAfter > 0) {
+      err.retryAfterSeconds = retryAfter
+    }
     throw err
   }
 
@@ -95,6 +99,10 @@ export const documentsApi = {
       method: 'DELETE',
       body:   JSON.stringify({ documentId }),
     }),
+
+  // Load extracted document text only when a browser-side AI fallback needs it
+  getText: (documentId) =>
+    apiFetch(`/documents/text?documentId=${encodeURIComponent(documentId)}`),
 }
 
 // ── Chat ───────────────────────────────────────────────────────────

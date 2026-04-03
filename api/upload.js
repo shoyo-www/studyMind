@@ -12,11 +12,16 @@ import {
   setCors,
 } from './_helpers.js'
 import {
+  extractPdfText,
+  isMissingDocumentTextColumnError,
+} from './_documentText.js'
+import {
   extractJsonFromText,
   getGeminiClient,
   getGeminiModelName,
   makeGeminiFilePart,
   runGeminiTask,
+  shouldSkipGeminiDueToRecentQuota,
   uploadPdfToGemini,
 } from './_gemini.js'
 
@@ -111,59 +116,100 @@ export default async function handler(req, res) {
     if (uploadError) throw uploadError
 
     let metadata = getFallbackMetadata(file)
+    let documentText = ''
 
     if (AI_SUPPORTED_MIME_TYPES.has(file.mimetype)) {
       try {
-        const ai = getGeminiClient()
-        const geminiFile = await uploadPdfToGemini(ai, {
-          buffer: fileBuffer,
-          displayName: safeFileName,
-        })
-
-        const result = await runGeminiTask(() => ai.models.generateContent({
-          model: getGeminiModelName(),
-          contents: [
-            { text: 'Analyse this document and return a JSON object with title, subject, totalPages, topics, and summary.' },
-            makeGeminiFilePart(geminiFile),
-          ],
-          config: {
-            responseMimeType: 'application/json',
-            systemInstruction: 'Return only valid JSON. topics must be an array of objects with title, estimatedMinutes, and subtopics.',
-          },
-        }), {
-          label: 'Gemini upload analysis',
-          userMessage: 'AI document analysis is temporarily busy. Please try again in about a minute.',
-        })
-
-        const parsed = JSON.parse(extractJsonFromText(result.text))
-        metadata = {
-          ...metadata,
-          title: parsed.title || metadata.title,
-          subject: parsed.subject || metadata.subject,
-          totalPages: Number(parsed.totalPages) || metadata.totalPages,
-          topics: Array.isArray(parsed.topics) ? parsed.topics : metadata.topics,
-          summary: parsed.summary || metadata.summary,
+        const extractedPdf = await extractPdfText(fileBuffer)
+        documentText = extractedPdf.text || ''
+        if (extractedPdf.totalPages) {
+          metadata = {
+            ...metadata,
+            totalPages: extractedPdf.totalPages,
+          }
         }
       } catch (error) {
-        console.error('[Upload metadata extraction failed]', error)
+        console.warn('[Upload text extraction skipped]', error?.message || error)
+      }
+
+      const canAttemptGeminiAnalysis = Boolean(process.env.GEMINI_API_KEY) && !shouldSkipGeminiDueToRecentQuota()
+
+      if (!canAttemptGeminiAnalysis) {
+        const reason = process.env.GEMINI_API_KEY
+          ? 'Gemini analysis is cooling down after a recent quota response.'
+          : 'GEMINI_API_KEY is not configured.'
+        console.info(`[Upload metadata extraction skipped] ${reason}`)
+      } else {
+        try {
+          const ai = getGeminiClient()
+          const geminiFile = await uploadPdfToGemini(ai, {
+            buffer: fileBuffer,
+            displayName: safeFileName,
+          })
+
+          const result = await runGeminiTask(() => ai.models.generateContent({
+            model: getGeminiModelName(),
+            contents: [
+              { text: 'Analyse this document and return a JSON object with title, subject, totalPages, topics, and summary.' },
+              makeGeminiFilePart(geminiFile),
+            ],
+            config: {
+              responseMimeType: 'application/json',
+              systemInstruction: 'Return only valid JSON. topics must be an array of objects with title, estimatedMinutes, and subtopics.',
+            },
+          }), {
+            label: 'Gemini upload analysis',
+            userMessage: 'AI document analysis is temporarily busy. Please try again in about a minute.',
+            quotaUserMessage: 'AI document analysis is temporarily unavailable because the Gemini API quota for this project has been exhausted.',
+          })
+
+          const parsed = JSON.parse(extractJsonFromText(result.text))
+          metadata = {
+            ...metadata,
+            title: parsed.title || metadata.title,
+            subject: parsed.subject || metadata.subject,
+            totalPages: Number(parsed.totalPages) || metadata.totalPages,
+            topics: Array.isArray(parsed.topics) ? parsed.topics : metadata.topics,
+            summary: parsed.summary || metadata.summary,
+          }
+        } catch (error) {
+          if (error?.geminiIssueType) {
+            console.warn(`[Upload metadata extraction skipped] ${error.message}`)
+          } else {
+            console.error('[Upload metadata extraction failed]', error)
+          }
+        }
       }
     }
 
-    const { data: document, error: documentError } = await supabase
+    const documentInsertPayload = {
+      user_id: user.id,
+      title: metadata.title || getFallbackMetadata(file).title,
+      subject: metadata.subject || 'General',
+      storage_path: storagePath,
+      total_pages: metadata.totalPages || 0,
+      summary: metadata.summary || '',
+      document_text: documentText || null,
+      topics: metadata.topics || [],
+      file_size: file.size,
+      mime_type: file.mimetype,
+    }
+
+    let { data: document, error: documentError } = await supabase
       .from('documents')
-      .insert({
-        user_id: user.id,
-        title: metadata.title || getFallbackMetadata(file).title,
-        subject: metadata.subject || 'General',
-        storage_path: storagePath,
-        total_pages: metadata.totalPages || 0,
-        summary: metadata.summary || '',
-        topics: metadata.topics || [],
-        file_size: file.size,
-        mime_type: file.mimetype,
-      })
+      .insert(documentInsertPayload)
       .select()
       .single()
+
+    if (documentError && isMissingDocumentTextColumnError(documentError)) {
+      console.warn('[Upload document_text skipped] documents.document_text column is not available yet.')
+      const { document_text, ...legacyInsertPayload } = documentInsertPayload
+      ;({ data: document, error: documentError } = await supabase
+        .from('documents')
+        .insert(legacyInsertPayload)
+        .select()
+        .single())
+    }
 
     if (documentError) throw documentError
 

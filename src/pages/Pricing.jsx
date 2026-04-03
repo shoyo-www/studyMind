@@ -75,8 +75,8 @@ export default function Pricing() {
   const { t } = useT()
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <TopBar title={t('pricing.title')} subtitle={t('pricing.subtitle')} />
-      <div className="flex-1 overflow-y-auto px-8 py-8">
+      <TopBar onOpenSidebar={onOpenSidebar} title={t('pricing.title')} subtitle={t('pricing.subtitle')} />
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 sm:py-8">
         <div className="text-center mb-10 max-w-lg mx-auto">
           <h2 className="font-display font-bold text-3xl text-zinc-900 tracking-tight mb-3">
             {t('pricing.headline')}<br />
@@ -89,7 +89,7 @@ export default function Pricing() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-5 max-w-4xl mx-auto mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 max-w-4xl mx-auto mb-8 sm:mb-12">
           {plans.map((plan) => (
             <div key={plan.name} className={`relative flex flex-col rounded-2xl p-6 transition-all duration-200
               ${plan.accent ? 'bg-zinc-900 text-white border-2 border-zinc-800 shadow-xl shadow-zinc-900/10' : 'bg-white border border-zinc-100 hover:border-zinc-200'}`}>
