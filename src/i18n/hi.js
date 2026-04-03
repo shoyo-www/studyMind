@@ -30,6 +30,7 @@ const hi = {
     roadmap:    'लर्निंग रोडमैप',
     quiz:       'क्विज़ और अभ्यास',
     flashcards: 'फ्लैशकार्ड',
+    mocktest:   'मॉक टेस्ट',
     progress:   'मेरी प्रगति',
     pricing:    'मूल्य निर्धारण',
     overview:   'अवलोकन',

@@ -19,11 +19,17 @@ const STUDY_SET_DOC_CHAR_BUDGETS = {
   truefalse: [14_000, 10_000, 7_000],
   flashcard: [12_000, 9_000, 6_000],
 }
+const MOCK_TEST_DOC_CHAR_BUDGETS = {
+  50: [18_000, 14_000, 10_000],
+  75: [16_000, 12_000, 9_000],
+  100: [14_000, 10_000, 7_000],
+}
 const STUDY_SET_MAX_TOKENS = {
   mcq: 1_400,
   truefalse: 1_200,
   flashcard: 2_200,
 }
+const MOCK_TEST_MAX_TOKENS = 4_096
 
 function clampDocumentText(text, maxChars) {
   const safeText = `${text || ''}`.trim()
@@ -309,4 +315,68 @@ export async function groqGenerateStudySet({ documentTitle, documentText, count,
   }
 
   throw lastError || new Error(`Groq ${type} generation failed. Please try again.`)
+}
+
+export async function groqGenerateMockTest({ documentTitle, documentText, prompt, totalMarks = 100 }) {
+  const safeText = `${documentText || ''}`.trim()
+  const docBudgets = MOCK_TEST_DOC_CHAR_BUDGETS[Number(totalMarks)] || MOCK_TEST_DOC_CHAR_BUDGETS[100]
+  let lastError = null
+
+  for (const maxChars of docBudgets) {
+    const clampedText = clampDocumentText(safeText, maxChars)
+    const messages = [
+      {
+        role: 'system',
+        content: [
+          'You are an expert exam paper setter.',
+          'Generate exam questions ONLY from the provided document text.',
+          'Return only valid JSON arrays.',
+          'No markdown and no extra prose.',
+        ].join(' '),
+      },
+      {
+        role: 'user',
+        content: [
+          `Document: "${documentTitle}"`,
+          '',
+          '═══ DOCUMENT TEXT ═══',
+          clampedText,
+          '═══ END OF DOCUMENT ═══',
+          '',
+          prompt,
+        ].join('\n'),
+      },
+    ]
+
+    try {
+      const rawText = await groqChat(messages, {
+        temperature: 0.4,
+        maxTokens: MOCK_TEST_MAX_TOKENS,
+      })
+      const jsonStr = extractJsonFromGroqText(rawText)
+
+      let parsed
+      try {
+        parsed = JSON.parse(jsonStr)
+      } catch {
+        throw new Error('Groq returned invalid JSON for mock test generation. Please try again.')
+      }
+
+      const items = Array.isArray(parsed) ? parsed : []
+      if (!items.length) {
+        throw new Error('Groq returned no mock test questions. Please try again.')
+      }
+
+      return items
+    } catch (error) {
+      lastError = error
+      if (!isGroqOversizedError(error) || maxChars === docBudgets[docBudgets.length - 1]) {
+        throw error
+      }
+
+      console.warn(`[Groq mocktest] Request too large with ${maxChars} chars. Retrying with less document text.`)
+    }
+  }
+
+  throw lastError || new Error('Groq mock test generation failed. Please try again.')
 }

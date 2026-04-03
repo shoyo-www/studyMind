@@ -1,0 +1,37 @@
+// api/mocktest/list.js
+import { fail, getAdminSupabase, ok, requireAuth, setCors } from '../_helpers.js'
+
+export default async function handler(req, res) {
+  setCors(req, res)
+  if (req.method === 'OPTIONS') return res.status(200).end()
+  if (req.method !== 'GET')     return fail(res, { status: 405, message: 'Method not allowed' })
+
+  try {
+    const user     = await requireAuth(req)
+    const supabase = getAdminSupabase()
+
+    const { data, error } = await supabase
+      .from('mock_tests')
+      .select(`id, title, subject, duration_minutes, total_marks, created_at,
+        mock_test_submissions (id, marks_obtained, percentage, time_taken_secs, submitted_at)`)
+      .eq('user_id', user.id).eq('status', 'ready')
+      .order('created_at', { ascending: false }).limit(20)
+
+    if (error) throw error
+
+    return ok(res, {
+      mockTests: (data || []).map(mt => ({
+        id:              mt.id,
+        title:           mt.title,
+        subject:         mt.subject,
+        durationMinutes: mt.duration_minutes,
+        totalMarks:      mt.total_marks,
+        createdAt:       mt.created_at,
+        lastSubmission:  mt.mock_test_submissions?.[0] || null,
+        attemptCount:    mt.mock_test_submissions?.length || 0,
+      })),
+    })
+  } catch (error) {
+    return fail(res, error)
+  }
+}

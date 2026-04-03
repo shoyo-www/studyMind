@@ -62,6 +62,34 @@ create table if not exists public.quizzes (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.mock_tests (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  document_id uuid not null references public.documents(id) on delete cascade,
+  title text not null,
+  subject text,
+  duration_minutes integer not null default 180,
+  total_marks integer not null default 100,
+  questions jsonb not null default '[]'::jsonb,
+  status text not null default 'ready' check (status in ('generating', 'ready', 'failed')),
+  generated_with_model text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.mock_test_submissions (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  mock_test_id uuid not null references public.mock_tests(id) on delete cascade,
+  answers jsonb not null default '[]'::jsonb,
+  analysis jsonb,
+  total_marks integer,
+  marks_obtained integer,
+  percentage numeric(5,2),
+  time_taken_secs integer default 0,
+  submitted_at timestamptz not null default now(),
+  analysed_at timestamptz
+);
+
 create index if not exists documents_user_id_created_at_idx
   on public.documents (user_id, created_at desc);
 
@@ -80,10 +108,24 @@ create index if not exists quizzes_document_id_created_at_idx
 create index if not exists quizzes_user_document_status_created_at_idx
   on public.quizzes (user_id, document_id, status, created_at desc);
 
+create index if not exists mock_tests_user_id_created_at_idx
+  on public.mock_tests (user_id, created_at desc);
+
+create index if not exists mock_tests_document_id_created_at_idx
+  on public.mock_tests (document_id, created_at desc);
+
+create index if not exists mock_test_submissions_user_id_created_at_idx
+  on public.mock_test_submissions (user_id, submitted_at desc);
+
+create index if not exists mock_test_submissions_test_id_created_at_idx
+  on public.mock_test_submissions (mock_test_id, submitted_at desc);
+
 alter table public.profiles enable row level security;
 alter table public.documents enable row level security;
 alter table public.messages enable row level security;
 alter table public.quizzes enable row level security;
+alter table public.mock_tests enable row level security;
+alter table public.mock_test_submissions enable row level security;
 
 do $$
 begin
@@ -226,6 +268,91 @@ begin
       for update
       to authenticated
       using ((select auth.uid()) = user_id)
+      with check ((select auth.uid()) = user_id);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'mock_tests'
+      and policyname = 'Users can view own mock tests'
+  ) then
+    create policy "Users can view own mock tests"
+      on public.mock_tests
+      for select
+      to authenticated
+      using ((select auth.uid()) = user_id);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'mock_tests'
+      and policyname = 'Users can insert own mock tests'
+  ) then
+    create policy "Users can insert own mock tests"
+      on public.mock_tests
+      for insert
+      to authenticated
+      with check ((select auth.uid()) = user_id);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'mock_tests'
+      and policyname = 'Users can update own mock tests'
+  ) then
+    create policy "Users can update own mock tests"
+      on public.mock_tests
+      for update
+      to authenticated
+      using ((select auth.uid()) = user_id)
+      with check ((select auth.uid()) = user_id);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'mock_tests'
+      and policyname = 'Users can delete own mock tests'
+  ) then
+    create policy "Users can delete own mock tests"
+      on public.mock_tests
+      for delete
+      to authenticated
+      using ((select auth.uid()) = user_id);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'mock_test_submissions'
+      and policyname = 'Users can view own mock test submissions'
+  ) then
+    create policy "Users can view own mock test submissions"
+      on public.mock_test_submissions
+      for select
+      to authenticated
+      using ((select auth.uid()) = user_id);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'mock_test_submissions'
+      and policyname = 'Users can insert own mock test submissions'
+  ) then
+    create policy "Users can insert own mock test submissions"
+      on public.mock_test_submissions
+      for insert
+      to authenticated
       with check ((select auth.uid()) = user_id);
   end if;
 end

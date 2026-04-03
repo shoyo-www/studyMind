@@ -30,6 +30,7 @@ const en = {
     roadmap:    'Roadmap',
     quiz:       'Quiz & Practice',
     flashcards: 'Flashcards',
+    mocktest:   'Mock Test',
     progress:   'My Progress',
     pricing:    'Pricing',
     overview:   'Overview',

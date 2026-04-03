@@ -74,5 +74,6 @@ export const NAV_ITEMS = [
   { id: 'roadmap',   label: 'Roadmap',          section: 'Learn'     },
   { id: 'quiz',      label: 'Quiz & Practice',  section: null        },
   { id: 'flashcards',label: 'Flashcards',       section: null        },
+  { id: 'mocktest',  label: 'Mock Test',         section: null        },
   { id: 'progress',  label: 'My Progress',      section: null        },
 ]

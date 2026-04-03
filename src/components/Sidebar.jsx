@@ -9,6 +9,7 @@ const icons = {
   roadmap:    <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="2.5" r="1.5" stroke="currentColor" strokeWidth="1.2"/><circle cx="7.5" cy="7.5" r="1.5" stroke="currentColor" strokeWidth="1.2"/><circle cx="7.5" cy="12.5" r="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M7.5 4V6M7.5 9V11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
   quiz:       <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 2.5C2 1.67157 2.67157 1 3.5 1H11.5C12.3284 1 13 1.67157 13 2.5V13.5L10.5 12L7.5 13.5L4.5 12L2 13.5V2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/><path d="M5 5.5H10M5 8H8.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
   flashcards: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M4 3.5C4 2.67157 4.67157 2 5.5 2H11C11.8284 2 12.5 2.67157 12.5 3.5V10.5C12.5 11.3284 11.8284 12 11 12H5.5C4.67157 12 4 11.3284 4 10.5V3.5Z" stroke="currentColor" strokeWidth="1.2"/><path d="M2.5 5V11C2.5 11.8284 3.17157 12.5 4 12.5H10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M6 5.5H10.5M6 8H9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
+  mocktest:   <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 2.5C2 1.67 2.67 1 3.5 1h8C12.33 1 13 1.67 13 2.5v10l-2-1.5-2 1.5-2-1.5L5 12.5V2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/><path d="M5 4.5h5M5 6.5h3.5M5 8.5h2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
   progress:   <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M1.5 11L5 7.5L8 10.5L13.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   pricing:    <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.2"/><path d="M7.5 4V5M7.5 10V11M5.5 8.5C5.5 9.33 6.39 10 7.5 10C8.61 10 9.5 9.33 9.5 8.5C9.5 7.67 8.61 7 7.5 7C6.39 7 5.5 6.33 5.5 5.5C5.5 4.67 6.39 4 7.5 4C8.61 4 9.5 4.67 9.5 5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
 }
@@ -23,12 +24,27 @@ export default function Sidebar({ screen, setScreen, user, profile, onClose }) {
   return (
     <aside className="w-64 sm:w-56 shrink-0 bg-white border-r border-zinc-100 flex flex-col h-full">
       {/* Logo + close button on mobile */}
-      <div className="px-6 py-5 border-b border-zinc-100 flex items-center justify-between">
-        <div>
-          <div className="font-display font-bold text-xl tracking-tight text-zinc-900">
-            Study<span className="text-violet-600">Mind</span>
+      <div className="px-5 py-5 border-b border-zinc-100 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {/* App icon mark */}
+          <div className="shrink-0">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="32" height="32" rx="7" fill="#6c63ff"/>
+              <path d="M8 21 L8 11 Q16 9 16 11 L16 21" fill="white" opacity="0.95"/>
+              <path d="M24 21 L24 11 Q16 9 16 11 L16 21" fill="white" opacity="0.72"/>
+              <line x1="16" y1="11" x2="16" y2="21" stroke="#6c63ff" strokeWidth="0.8"/>
+              <path d="M8 21 Q16 23.5 24 21" stroke="white" strokeWidth="1.3" fill="none" strokeLinecap="round"/>
+              <circle cx="21" cy="7.5" r="1.8" fill="white"/>
+              <circle cx="24.5" cy="5" r="1.1" fill="white" opacity="0.7"/>
+              <circle cx="19" cy="4.5" r="0.9" fill="white" opacity="0.5"/>
+            </svg>
           </div>
-          <div className="text-xs text-zinc-400 mt-0.5 font-light">AI-powered learning</div>
+          <div>
+            <div className="font-display font-bold text-lg tracking-tight text-zinc-900 leading-tight">
+              Study<span className="text-violet-600">Mind</span>
+            </div>
+            <div className="text-[11px] text-zinc-400 font-light">AI-powered learning</div>
+          </div>
         </div>
         {/* Close button — mobile only */}
         {onClose && (

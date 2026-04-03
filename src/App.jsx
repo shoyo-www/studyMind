@@ -9,6 +9,7 @@ import Progress  from './pages/Progress'
 import Pricing   from './pages/Pricing'
 import Landing   from './pages/Landing'
 import Auth      from './pages/Auth'
+import MockTest  from './pages/MockTest'
 import ChatPanel from './components/ChatPanel'
 import BottomNav from './components/BottomNav'
 import { documentsApi, profileApi } from './lib/api'
@@ -23,6 +24,7 @@ const PAGES = {
   flashcards: Flashcards,
   progress:  Progress,
   pricing:   Pricing,
+  mocktest:  MockTest,
 }
 
 export default function App() {

@@ -164,3 +164,18 @@ export const profileApi = {
 export const progressApi = {
   get: () => apiFetch('/progress'),
 }
+
+// ── Mock Test ──────────────────────────────────────────────────────
+export const mockTestApi = {
+  generate: (documentId, options = {}) =>
+    apiFetch('/mocktest/generate', {
+      method: 'POST',
+      body:   JSON.stringify({ documentId, ...options }),
+    }),
+  submit: (mockTestId, answers, timeTakenSecs) =>
+    apiFetch('/mocktest/submit', {
+      method: 'POST',
+      body:   JSON.stringify({ mockTestId, answers, timeTakenSecs }),
+    }),
+  list: () => apiFetch('/mocktest/list'),
+}
