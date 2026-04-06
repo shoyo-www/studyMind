@@ -253,6 +253,7 @@ const en = {
     notFound:       'Document not found.',
     generic:        'Something went wrong. Please try again.',
     noFile:         'Please select a file first.',
+    emptyFile:      'This file is empty. Please choose another PDF or DOCX file.',
     fileTooLarge:   'File is too large. Maximum size is 50MB.',
     invalidType:    'Only PDF and DOCX files are allowed.',
   },

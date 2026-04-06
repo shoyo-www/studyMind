@@ -17,6 +17,12 @@ import {
 } from './_documentText.js'
 import { buildRoadmapTopicsFromText } from './_roadmapTopics.js'
 import {
+  MAX_UPLOAD_FILE_SIZE,
+  getFirstUploadedFile,
+  getUploadContentType,
+  validateUploadFile,
+} from '../shared/uploadValidation.js'
+import {
   extractJsonFromText,
   getGeminiClient,
   getGeminiModelName,
@@ -26,19 +32,14 @@ import {
   uploadPdfToGemini,
 } from './_gemini.js'
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024
 const AI_SUPPORTED_MIME_TYPES = new Set(['application/pdf'])
-const UPLOAD_ALLOWED_MIME_TYPES = new Set([
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-])
 
 export const config = { api: { bodyParser: false } }
 
-function getFallbackMetadata(file) {
+function getFallbackMetadata(file, mimeType = getUploadContentType(file)) {
   const baseTitle = (file.originalFilename || 'Untitled document').replace(/\.[^.]+$/, '')
 
-  if (file.mimetype === 'application/pdf') {
+  if (mimeType === 'application/pdf') {
     return {
       title: baseTitle,
       subject: 'General',
@@ -71,26 +72,20 @@ export default async function handler(req, res) {
 
     const form = formidable({
       allowEmptyFiles: false,
-      maxFileSize: MAX_FILE_SIZE,
+      maxFileSize: MAX_UPLOAD_FILE_SIZE,
       multiples: false,
     })
 
     const [, files] = await form.parse(req)
-    const file = files.file?.[0]
+    const file = getFirstUploadedFile(files)
 
-    if (!file) {
-      return fail(res, { status: 400, message: 'No file uploaded' })
-    }
+    const validationError = validateUploadFile(file)
+    if (validationError === 'no_file') return fail(res, { status: 400, message: 'No file uploaded' })
+    if (validationError === 'empty_file') return fail(res, { status: 400, message: 'File is empty.' })
+    if (validationError === 'invalid_type') return fail(res, { status: 400, message: 'Only PDF and DOCX files are allowed' })
+    if (validationError === 'file_too_large') return fail(res, { status: 400, message: 'File is too large. Maximum size is 50MB.' })
 
     uploadedTempPath = file.filepath
-
-    if (!UPLOAD_ALLOWED_MIME_TYPES.has(file.mimetype)) {
-      return fail(res, { status: 400, message: 'Only PDF and DOCX files are allowed' })
-    }
-
-    if (!file.size || file.size > MAX_FILE_SIZE) {
-      return fail(res, { status: 400, message: 'File is too large. Maximum size is 50MB.' })
-    }
 
     const supabase = getAdminSupabase()
     const profile = await ensureProfile(supabase, user)
@@ -105,21 +100,22 @@ export default async function handler(req, res) {
 
     const fileBuffer = fs.readFileSync(file.filepath)
     const safeFileName = sanitizeFileName(file.originalFilename)
+    const contentType = getUploadContentType(file)
     const storagePath = `${user.id}/${Date.now()}-${safeFileName}`
 
     const { error: uploadError } = await supabase.storage
       .from('documents')
       .upload(storagePath, fileBuffer, {
-        contentType: file.mimetype,
+        contentType,
         upsert: false,
       })
 
     if (uploadError) throw uploadError
 
-    let metadata = getFallbackMetadata(file)
+    let metadata = getFallbackMetadata(file, contentType)
     let documentText = ''
 
-    if (AI_SUPPORTED_MIME_TYPES.has(file.mimetype)) {
+    if (AI_SUPPORTED_MIME_TYPES.has(contentType)) {
       try {
         const extractedPdf = await extractPdfText(fileBuffer)
         documentText = extractedPdf.text || ''
@@ -199,7 +195,7 @@ export default async function handler(req, res) {
       document_text: documentText || null,
       topics: metadata.topics || [],
       file_size: file.size,
-      mime_type: file.mimetype,
+      mime_type: contentType,
     }
 
     let { data: document, error: documentError } = await supabase
@@ -229,7 +225,7 @@ export default async function handler(req, res) {
       document,
       topics: metadata.topics || [],
       summary: metadata.summary || '',
-      analysisAvailable: AI_SUPPORTED_MIME_TYPES.has(file.mimetype),
+      analysisAvailable: AI_SUPPORTED_MIME_TYPES.has(contentType),
       roadmapReady: Array.isArray(metadata.topics) && metadata.topics.length > 0,
     }, 201)
   } catch (error) {

@@ -3,12 +3,7 @@ import AppLoader from '../components/AppLoader'
 import TopBar from '../components/TopBar'
 import { useT } from '../i18n'
 import { documentsApi, quizApi } from '../lib/api'
-
-const MAX_FILE_SIZE = 50 * 1024 * 1024
-const ALLOWED_FILE_TYPES = new Set([
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-])
+import { validateUploadFile } from '../../shared/uploadValidation.js'
 
 export default function Upload({
   onOpenSidebar, refreshAppData, setSelectedDocumentId, setScreen }) {
@@ -39,18 +34,12 @@ export default function Upload({
   ]
 
   function validateFile(file) {
-    if (!file) {
-      return t('errors.noFile')
-    }
+    const validationError = validateUploadFile(file)
 
-    if (!ALLOWED_FILE_TYPES.has(file.type)) {
-      return t('errors.invalidType')
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      return t('errors.fileTooLarge')
-    }
-
+    if (validationError === 'no_file') return t('errors.noFile')
+    if (validationError === 'empty_file') return t('errors.emptyFile')
+    if (validationError === 'invalid_type') return t('errors.invalidType')
+    if (validationError === 'file_too_large') return t('errors.fileTooLarge')
     return ''
   }
 
