@@ -1,9 +1,4 @@
 // api/chat.js
-// Primary: Gemini (native PDF reading)
-// Fallback: Groq (text-based, fires on ANY Gemini failure including billing errors)
-//
-// If GEMINI_API_KEY is not set at all → skip straight to Groq
-// If Gemini returns ANY error (403 billing, 429 quota, 500 server) → fall back to Groq
 
 import {
   checkRateLimit,
@@ -24,8 +19,6 @@ import {
   shouldSkipGeminiDueToRecentQuota,
   uploadPdfToGemini,
 } from './_gemini.js'
-import { groqChatWithText, isGroqConfigured } from './_groq.js'
-import { extractPdfText, isMissingDocumentTextColumnError } from './_documentText.js'
 
 function getNextMidnightIso() {
   const d = new Date()
@@ -33,93 +26,13 @@ function getNextMidnightIso() {
   return d.toISOString()
 }
 
-// Any Gemini error that isn't a user validation error → try Groq
-// This catches: 403 billing, 429 quota, 500/503 server, auth errors, all
-function shouldFallbackToGroq(err) {
-  const status  = err?.status || 0
-  const message = `${err?.message || ''}`.toLowerCase()
-
-  // Don't fall back for user input errors
-  if (status === 400) return false
-  if (status === 401 && message.includes('invalid api key')) return false
-
-  // Fall back for everything else: billing (403), quota (429), server (500/503),
-  // auth/billing errors, network errors, unknown errors
-  return true
-}
-
-// ── Robust document text fetcher ────────────────────────────────────
-// Tries 3 paths in order:
-//   1. Stored document_text column (instant)
-//   2. Extract from PDF in storage (slower but always works)
-//   3. Returns empty string (Groq will still try its best)
-async function getDocumentText(supabase, document) {
-  // Path 1: Stored text column
-  try {
-    const { data, error } = await supabase
-      .from('documents')
-      .select('document_text')
-      .eq('id', document.id)
-      .single()
-
-    if (!error && data?.document_text?.trim()) {
-      console.log(`[getDocumentText] Using stored text for doc ${document.id} (${data.document_text.length} chars)`)
-      return data.document_text
-    }
-  } catch (e) {
-    // Column may not exist yet — continue to extraction
-    if (!isMissingDocumentTextColumnError(e)) {
-      console.warn('[getDocumentText] Unexpected DB error:', e?.message)
-    }
+function createUnavailableError(message, status = 503, retryAfterSeconds = null) {
+  const error = new Error(message)
+  error.status = status
+  if (retryAfterSeconds) {
+    error.retryAfterSeconds = retryAfterSeconds
   }
-
-  // Path 2: Extract directly from PDF
-  console.log(`[getDocumentText] Extracting text from PDF for doc ${document.id}`)
-  try {
-    const { data: fileData, error: fileErr } = await supabase.storage
-      .from('documents')
-      .download(document.storage_path)
-
-    if (fileErr) throw fileErr
-
-    const buffer       = Buffer.from(await fileData.arrayBuffer())
-    const { text, totalPages } = await extractPdfText(buffer)
-
-    if (!text?.trim()) {
-      console.warn(`[getDocumentText] PDF extraction returned empty text for doc ${document.id}`)
-      return ''
-    }
-
-    console.log(`[getDocumentText] Extracted ${text.length} chars, ${totalPages} pages`)
-
-    // Path 3: Persist for future requests (best-effort, don't block)
-    supabase.from('documents')
-      .update({ document_text: text })
-      .eq('id', document.id)
-      .then(() => console.log(`[getDocumentText] Persisted text for doc ${document.id}`))
-      .catch(e => console.warn('[getDocumentText] Could not persist text:', e?.message))
-
-    return text
-
-  } catch (extractErr) {
-    console.error('[getDocumentText] PDF extraction failed:', extractErr?.message)
-    return ''
-  }
-}
-
-// ── Groq NotebookLM-style chat ───────────────────────────────────────
-async function chatWithGroq({ doc, documentText, message, history }) {
-  if (!documentText?.trim()) {
-    // If we somehow have no text, still try — Groq may know the topic
-    console.warn('[Chat/Groq] No document text available, proceeding without context')
-  }
-
-  return groqChatWithText({
-    documentTitle: doc.title,
-    documentText,
-    message,
-    history,
-  })
+  return error
 }
 
 export default async function handler(req, res) {
@@ -171,76 +84,57 @@ export default async function handler(req, res) {
     if (doc.mime_type !== 'application/pdf') return fail(res, { status: 400, message: 'AI chat supports PDF documents only.' })
 
     let reply = ''
-    let provider = 'gemini'
-
     const geminiApiKey = process.env.GEMINI_API_KEY
-    const canUseGroq = isGroqConfigured()
-    const shouldBypassGemini = canUseGroq && shouldSkipGeminiDueToRecentQuota()
-
-    if (!geminiApiKey && canUseGroq) {
-      console.log('[Chat] No GEMINI_API_KEY — using Groq directly')
-      provider = 'groq'
-      const documentText = await getDocumentText(supabase, doc)
-      reply = await chatWithGroq({ doc, documentText, message, history })
-    } else if (shouldBypassGemini) {
-      console.log('[Chat] Skipping Gemini because project quota is still cooling down — using Groq directly')
-      provider = 'groq'
-      const documentText = await getDocumentText(supabase, doc)
-      reply = await chatWithGroq({ doc, documentText, message, history })
-    } else {
-      // ── Try Gemini first ───────────────────────────────────────
-      try {
-        const { data: fileData, error: fileErr } = await supabase.storage
-          .from('documents').download(doc.storage_path)
-        if (fileErr) throw fileErr
-
-        const pdfBuffer  = Buffer.from(await fileData.arrayBuffer())
-        const ai         = getGeminiClient()
-        const geminiFile = await uploadPdfToGemini(ai, {
-          buffer:      pdfBuffer,
-          displayName: sanitizeFileName(doc.title || 'notes.pdf'),
-        })
-
-        const recentHistory = Array.isArray(history)
-          ? history.slice(-10)
-              .map(e => ({ role: e?.role === 'user' ? 'user' : 'assistant', text: `${e?.text || ''}`.trim().slice(0, 2000) }))
-              .filter(e => e.text)
-          : []
-        const historyText = recentHistory.length
-          ? recentHistory.map(e => `${e.role === 'user' ? 'Student' : 'Assistant'}: ${e.text}`).join('\n')
-          : 'No previous conversation.'
-
-        const result = await runGeminiTask(() => ai.models.generateContent({
-          model:    getGeminiModelName(),
-          contents: [
-            { text: [`Conversation so far:\n${historyText}`, `Student: ${message.trim()}`].join('\n\n') },
-            makeGeminiFilePart(geminiFile),
-          ],
-          config: {
-            systemInstruction: [
-              'You are StudyMind, an AI study assistant.',
-              `The student uploaded a document titled "${doc.title}".`,
-              'Answer ONLY from the content in the provided PDF.',
-              'If the answer is not in the PDF, say exactly: "I could not find that in your document."',
-              'Be concise, clear, and student-friendly.',
-            ].join(' '),
-          },
-        }), { label: 'Gemini chat', userMessage: 'AI is temporarily busy. Please try again.' })
-
-        reply = `${result.text || ''}`.trim() || 'I could not find that in your document.'
-
-      } catch (geminiErr) {
-        // ── Groq fallback — catches billing, quota, server, ALL errors
-        if (shouldFallbackToGroq(geminiErr) && canUseGroq) {
-          console.warn(`[Chat] Gemini failed (${geminiErr.status || geminiErr.message}), falling back to Groq`)
-          provider = 'groq'
-          const documentText = await getDocumentText(supabase, doc)
-          reply = await chatWithGroq({ doc, documentText, message, history })
-        } else {
-          throw geminiErr
-        }
-      }
+    if (!geminiApiKey) {
+      throw createUnavailableError('AI is temporarily unavailable. Please try again later.')
     }
+
+    if (shouldSkipGeminiDueToRecentQuota()) {
+      throw createUnavailableError('AI is temporarily unavailable. Please try again in about a minute.', 429, 60)
+    }
+
+    const { data: fileData, error: fileErr } = await supabase.storage
+      .from('documents').download(doc.storage_path)
+    if (fileErr) throw fileErr
+
+    const pdfBuffer = Buffer.from(await fileData.arrayBuffer())
+    const ai = getGeminiClient(geminiApiKey)
+    const geminiFile = await uploadPdfToGemini(ai, {
+      buffer: pdfBuffer,
+      displayName: sanitizeFileName(doc.title || 'notes.pdf'),
+    })
+
+    const recentHistory = Array.isArray(history)
+      ? history.slice(-10)
+          .map(e => ({ role: e?.role === 'user' ? 'user' : 'assistant', text: `${e?.text || ''}`.trim().slice(0, 2000) }))
+          .filter(e => e.text)
+      : []
+    const historyText = recentHistory.length
+      ? recentHistory.map(e => `${e.role === 'user' ? 'Student' : 'Assistant'}: ${e.text}`).join('\n')
+      : 'No previous conversation.'
+
+    const result = await runGeminiTask(() => ai.models.generateContent({
+      model: getGeminiModelName(),
+      contents: [
+        { text: [`Conversation so far:\n${historyText}`, `Student: ${message.trim()}`].join('\n\n') },
+        makeGeminiFilePart(geminiFile),
+      ],
+      config: {
+        systemInstruction: [
+          'You are StudyMind, an AI study assistant.',
+          `The student uploaded a document titled "${doc.title}".`,
+          'Answer ONLY from the content in the provided PDF.',
+          'If the answer is not in the PDF, say exactly: "I could not find that in your document."',
+          'Be concise, clear, and student-friendly.',
+        ].join(' '),
+      },
+    }), {
+      label: 'Document chat',
+      userMessage: 'AI is temporarily busy. Please try again in about a minute.',
+      quotaUserMessage: 'AI is temporarily unavailable. Please try again later.',
+    })
+
+    reply = `${result.text || ''}`.trim() || 'I could not find that in your document.'
 
     // ── Save + update counter ────────────────────────────────────
     await supabase.from('messages').insert([
@@ -253,7 +147,6 @@ export default async function handler(req, res) {
 
     return ok(res, {
       reply,
-      provider,
       messagesUsed:  messagesToday + 1,
       messagesLimit: dailyLimit,
     })

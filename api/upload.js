@@ -15,6 +15,7 @@ import {
   extractPdfText,
   isMissingDocumentTextColumnError,
 } from './_documentText.js'
+import { buildRoadmapTopicsFromText } from './_roadmapTopics.js'
 import {
   extractJsonFromText,
   getGeminiClient,
@@ -128,6 +129,12 @@ export default async function handler(req, res) {
             totalPages: extractedPdf.totalPages,
           }
         }
+        if (!metadata.topics.length && documentText) {
+          metadata = {
+            ...metadata,
+            topics: buildRoadmapTopicsFromText(documentText),
+          }
+        }
       } catch (error) {
         console.warn('[Upload text extraction skipped]', error?.message || error)
       }
@@ -169,7 +176,7 @@ export default async function handler(req, res) {
             title: parsed.title || metadata.title,
             subject: parsed.subject || metadata.subject,
             totalPages: Number(parsed.totalPages) || metadata.totalPages,
-            topics: Array.isArray(parsed.topics) ? parsed.topics : metadata.topics,
+            topics: Array.isArray(parsed.topics) && parsed.topics.length ? parsed.topics : metadata.topics,
             summary: parsed.summary || metadata.summary,
           }
         } catch (error) {
@@ -223,6 +230,7 @@ export default async function handler(req, res) {
       topics: metadata.topics || [],
       summary: metadata.summary || '',
       analysisAvailable: AI_SUPPORTED_MIME_TYPES.has(file.mimetype),
+      roadmapReady: Array.isArray(metadata.topics) && metadata.topics.length > 0,
     }, 201)
   } catch (error) {
     return fail(res, error)

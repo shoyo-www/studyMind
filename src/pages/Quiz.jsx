@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import AppLoader from '../components/AppLoader'
 import TopBar from '../components/TopBar'
 import { useT } from '../i18n'
 import { quizApi } from '../lib/api'
@@ -50,6 +51,8 @@ export default function Quiz({
   const pct = questions.length ? Math.round(((qIdx + 1) / questions.length) * 100) : 0
   const hasReadyQuiz = questions.length > 0 || done
   const activeDocumentIsPdf = activeDocument?.mime_type === 'application/pdf'
+  const showLoader = loading || pending
+  const loaderSubtitle = pending ? 'Preparing your quiz from the selected PDF' : 'Loading your quiz'
 
   function clearQuizState({ keepError = false } = {}) {
     setQuiz(null)
@@ -235,7 +238,7 @@ export default function Quiz({
             disabled={!activeDocument || loading || (!activeDocumentIsPdf && !pending)}
             className="text-xs px-3.5 py-2 border border-zinc-200 rounded-lg text-zinc-500 hover:bg-zinc-50 transition-colors disabled:opacity-50"
           >
-            {loading ? t('common.loading') : pending ? 'Check status' : `Generate ${requestedCount}-question quiz`}
+            {pending ? 'Check status' : `Generate ${requestedCount}-question quiz`}
           </button>
         )}
       />
@@ -277,12 +280,6 @@ export default function Quiz({
           </div>
         )}
 
-        {quiz?.generated_with_model === 'groq-fallback' && (
-          <div className="mb-4 rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-700">
-            This quiz was generated with the backend Groq fallback because the server Gemini quota is currently exhausted.
-          </div>
-        )}
-
         {quiz?.source === 'auto_upload' && quiz?.requested_count === 5 && !pending && !error && (
           <div className="mb-4 rounded-xl border border-violet-100 bg-violet-50/70 px-4 py-3 text-sm text-violet-700">
             A quick 5-question preview was prepared automatically after upload. Pick 10, 15, or 20 above if you want a longer practice set.
@@ -296,10 +293,6 @@ export default function Quiz({
         ) : !activeDocumentIsPdf ? (
           <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
             AI quiz generation currently supports PDF documents only.
-          </div>
-        ) : loading && !pending && !questions.length ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
-            {t('common.loading')}
           </div>
         ) : pending ? (
           <div className="rounded-2xl border border-violet-100 bg-white px-6 py-10 text-center">
@@ -428,6 +421,7 @@ export default function Quiz({
           </>
         )}
       </div>
+      {showLoader && <AppLoader fullScreen subtitle={loaderSubtitle} />}
     </div>
   )
 }

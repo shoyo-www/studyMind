@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import AppLoader from '../components/AppLoader'
 import { auth } from '../lib/supabase'
 
 const BENEFITS = [
@@ -263,10 +264,7 @@ export default function Auth({ onBack, onSuccess, configError = '' }) {
                   className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all mt-1 disabled:opacity-60 hover:opacity-90"
                   style={{ background: '#6c63ff' }}
                 >
-                  {loading
-                    ? (mode === 'login' ? 'Logging in...' : 'Creating account...')
-                    : (mode === 'login' ? 'Log in to StudyMind' : 'Create free account')
-                  }
+                  {mode === 'login' ? 'Log in to StudyMind' : 'Create free account'}
                 </button>
               </form>
 
@@ -293,6 +291,7 @@ export default function Auth({ onBack, onSuccess, configError = '' }) {
           )}
         </div>
       </div>
+      {loading && <AppLoader fullScreen subtitle={mode === 'login' ? 'Signing you in to StudyMind' : 'Creating your StudyMind account'} />}
     </div>
   )
 }

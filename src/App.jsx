@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Component } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import Sidebar   from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import Upload    from './pages/Upload'
+import Chat      from './pages/Chat'
 import Roadmap   from './pages/Roadmap'
 import Quiz      from './pages/Quiz'
 import Flashcards from './pages/Flashcards'
@@ -11,6 +12,7 @@ import Pricing   from './pages/Pricing'
 import Landing   from './pages/Landing'
 import Auth      from './pages/Auth'
 import MockTest  from './pages/MockTest'
+import AppLoader from './components/AppLoader'
 import ChatPanel from './components/ChatPanel'
 import BottomNav from './components/BottomNav'
 import { documentsApi, profileApi } from './lib/api'
@@ -20,12 +22,34 @@ import { supabase, isSupabaseConfigured, missingSupabaseEnvMessage } from './lib
 const PAGES = {
   dashboard: Dashboard,
   upload:    Upload,
+  chat:      Chat,
   roadmap:   Roadmap,
   quiz:      Quiz,
   flashcards: Flashcards,
   progress:  Progress,
   pricing:   Pricing,
   mocktest:  MockTest,
+}
+
+// Simple error boundary for page crashes
+class PageErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null } }
+  static getDerivedStateFromError(err) { return { hasError: true, error: err } }
+  componentDidCatch(err) { console.error('[PageErrorBoundary]', err) }
+  render() {
+    if (this.state.hasError) return (
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', padding:40, textAlign:'center', gap:12 }}>
+        <div style={{ fontSize:36 }}>⚠️</div>
+        <div style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:600, color:'#111110' }}>Something went wrong</div>
+        <div style={{ fontSize:13, color:'#71717A', maxWidth:280 }}>{this.state.error?.message || 'An unexpected error occurred.'}</div>
+        <button onClick={() => this.setState({ hasError:false, error:null })}
+          style={{ padding:'10px 24px', background:'#6c63ff', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', marginTop:8 }}>
+          Try again
+        </button>
+      </div>
+    )
+    return this.props.children
+  }
 }
 
 export default function App() {
@@ -38,6 +62,7 @@ export default function App() {
   const [appError,    setAppError]    = useState('')
   const [selectedDocumentId, setSelectedDocumentId] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)  // mobile drawer
+  const [appBooting,  setAppBooting]  = useState(true)   // initial session check
 
   async function refreshAppData() {
     if (!supabase || !user) return
@@ -60,7 +85,7 @@ export default function App() {
   }
 
   function navigate(s) {
-    setScreen(s === 'chat' || s === 'pricing' ? 'dashboard' : s)
+    setScreen(s === 'pricing' ? 'dashboard' : s)
     setSidebarOpen(false)
   }
 
@@ -68,6 +93,7 @@ export default function App() {
     if (!isSupabaseConfigured || !supabase) return
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) { setUser(session.user); setView('app') }
+      setAppBooting(false)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) { setUser(session.user); setView('app') }
@@ -82,6 +108,8 @@ export default function App() {
     if (!documents.length) { setSelectedDocumentId(null); return }
     if (!documents.some(d => d.id === selectedDocumentId)) setSelectedDocumentId(documents[0].id)
   }, [documents, selectedDocumentId])
+
+  if (appBooting) return <AppLoader fullScreen />
 
   if (view === 'landing') return <Landing onGetStarted={() => setView('auth')} onLogin={() => setView('auth')} />
   if (view === 'auth')    return <Auth onBack={() => setView('landing')} onSuccess={() => setView('app')} configError={!isSupabaseConfigured ? missingSupabaseEnvMessage : ''} />
@@ -119,15 +147,18 @@ export default function App() {
 
       {/* ── Main ── */}
       <main className="flex flex-col flex-1 min-w-0 overflow-hidden" style={{ paddingBottom: 'var(--bottom-nav-height, 0)' }}>
-        <Page
-          {...pageProps}
-          onOpenSidebar={() => setSidebarOpen(true)}
-        />
+        <PageErrorBoundary>
+          <Page
+            {...pageProps}
+            onOpenSidebar={() => setSidebarOpen(true)}
+          />
+        </PageErrorBoundary>
       </main>
 
       {/* ── Right AI Chat Panel ── */}
       <ChatPanel activeDocument={activeDocument} />
       <BottomNav screen={resolvedScreen} setScreen={navigate} />
+      {appLoading && <AppLoader fullScreen subtitle="Refreshing your StudyMind workspace" />}
       <Analytics />
     </div>
   )

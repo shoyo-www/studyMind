@@ -154,9 +154,7 @@ export default function Dashboard({
         <div className="mb-7">
           <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300 mb-4">{t('dashboard.yourDocuments')}</div>
 
-          {appLoading ? (
-            <Notice>{t('common.loading')}</Notice>
-          ) : documents.length ? (
+          {documents.length ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               {documents.map((document) => (
                 <DocCard

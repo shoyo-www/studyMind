@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { chatApi } from '../lib/api'
+import AppLoader from './AppLoader'
 import GeneratingIndicator from './GeneratingIndicator'
 
 const THREAD_CACHE = {}
@@ -167,6 +168,7 @@ export default function ChatPanel({ activeDocument = null }) {
 
   return (
     <>
+      {currentLoading && <AppLoader fullScreen subtitle="Finding the answer in your PDF" />}
       {open && (
         <button
           type="button"

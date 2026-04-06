@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react'
+import AppLoader from '../components/AppLoader'
 import TopBar from '../components/TopBar'
 import { useT } from '../i18n'
+import { documentsApi } from '../lib/api'
 import { buildRoadmapTopics } from '../lib/documents'
 
 const chipColors = {
@@ -55,17 +58,43 @@ function TopicItem({ topic, isLast, onPractice }) {
 }
 
 export default function Roadmap({
-  onOpenSidebar, documents, activeDocument, setSelectedDocumentId, setScreen }) {
+  onOpenSidebar, documents = [], activeDocument, setSelectedDocumentId, setScreen, refreshAppData }) {
   const { t } = useT()
+  const [generating, setGenerating] = useState(false)
+  const [roadmapError, setRoadmapError] = useState('')
   const topics = activeDocument ? buildRoadmapTopics(activeDocument).map((topic, index) => ({ ...topic, number: index + 1 })) : []
   const donePct = activeDocument?.pct_covered || 0
+  const activeDocumentIsPdf = activeDocument?.mime_type === 'application/pdf'
+
+  useEffect(() => {
+    setGenerating(false)
+    setRoadmapError('')
+  }, [activeDocument?.id])
+
+  async function handleGenerateRoadmap() {
+    if (!activeDocument?.id || generating) return
+
+    setGenerating(true)
+    setRoadmapError('')
+
+    try {
+      await documentsApi.generateRoadmap(activeDocument.id)
+      await refreshAppData?.()
+      setSelectedDocumentId(activeDocument.id)
+    } catch (error) {
+      setRoadmapError(error.message || 'We could not prepare a roadmap yet. Please try again.')
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <TopBar
+        onOpenSidebar={onOpenSidebar}
         title={t('roadmap.title')}
         subtitle={activeDocument ? `${activeDocument.subject} — ${topics.length} topics` : 'Select a document to build a roadmap.'}
-        action={activeDocument ? (
+        action={activeDocument && topics.length ? (
           <div className="flex items-center gap-3">
             <span className="text-xs text-zinc-400">{t('roadmap.progress')}</span>
             <div className="w-24 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
@@ -94,9 +123,30 @@ export default function Roadmap({
           <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
             Upload a document first to generate a roadmap from its topics.
           </div>
+        ) : !activeDocument ? (
+          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
+            Select a document above to view or generate its roadmap.
+          </div>
+        ) : !activeDocumentIsPdf ? (
+          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
+            Roadmaps are currently available for PDF documents only.
+          </div>
         ) : !topics.length ? (
           <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
-            This document does not have extracted topics yet. Upload a PDF to generate a richer roadmap.
+            <div className="font-medium text-zinc-800 mb-2">This document does not have a roadmap yet.</div>
+            <div className="mb-4">Generate one now and we&apos;ll build a study outline from the PDF text.</div>
+            <button
+              onClick={handleGenerateRoadmap}
+              disabled={generating}
+              className="text-xs px-3.5 py-2 border border-zinc-200 rounded-lg text-zinc-600 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            >
+              Generate roadmap
+            </button>
+            {roadmapError && (
+              <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {roadmapError}
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -123,6 +173,7 @@ export default function Roadmap({
           </>
         )}
       </div>
+      {generating && <AppLoader fullScreen subtitle="Preparing your roadmap from the PDF" />}
     </div>
   )
 }

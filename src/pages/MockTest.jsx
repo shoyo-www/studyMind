@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import AppLoader from '../components/AppLoader'
 import TopBar from '../components/TopBar'
 import { mockTestApi } from '../lib/api'
 
@@ -168,14 +169,7 @@ function SetupPhase({ documents, onGenerate, loading, error }) {
               disabled={loading || !docId}
               className="w-full py-4 rounded-2xl text-white font-semibold text-base transition-all disabled:opacity-50"
               style={{ background: loading ? '#A5B4FC' : '#6c63ff' }}>
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" strokeDasharray="40" strokeLinecap="round"/>
-                  </svg>
-                  Generating question paper…
-                </span>
-              ) : '🚀 Generate Question Paper'}
+              🚀 Generate Question Paper
             </button>
 
           </div>
@@ -229,7 +223,7 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
           <button onClick={() => setShowConfirm(true)} disabled={submitting}
             className="text-xs px-4 py-2 rounded-lg font-semibold text-white disabled:opacity-50 transition-all"
             style={{ background: '#111110' }}>
-            {submitting ? 'Submitting…' : 'Submit Exam'}
+            Submit Exam
           </button>
         </div>
       </div>
@@ -392,7 +386,7 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
               <button onClick={handleSubmit} disabled={submitting}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-all"
                 style={{ background: '#6c63ff' }}>
-                {submitting ? 'Submitting…' : 'Submit now'}
+                Submit now
               </button>
             </div>
           </div>
@@ -673,12 +667,6 @@ export default function MockTest({ onOpenSidebar, documents = [] }) {
         </div>
       )}
 
-      {mockTest?.generatedWithModel === 'groq-fallback' && phase !== 'setup' && !error && (
-        <div className="mx-4 mt-3 rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-700 shrink-0">
-          Gemini quota was exhausted, so this mock test was generated through the backend Groq fallback from your extracted PDF text.
-        </div>
-      )}
-
       {phase === 'setup' && (
         <SetupPhase documents={documents} onGenerate={handleGenerate} loading={generating} error={error} />
       )}
@@ -690,6 +678,12 @@ export default function MockTest({ onOpenSidebar, documents = [] }) {
           result={result}
           onRetry={() => { setPhase('exam'); setResult(null) }}
           onNewTest={() => { setPhase('setup'); setMockTest(null); setQuestions([]); setResult(null); setError('') }}
+        />
+      )}
+      {(generating || submitting) && (
+        <AppLoader
+          fullScreen
+          subtitle={generating ? 'Generating your mock test from the selected PDF' : 'Submitting your answers for evaluation'}
         />
       )}
     </div>

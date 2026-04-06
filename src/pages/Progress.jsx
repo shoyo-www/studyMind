@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import AppLoader from '../components/AppLoader'
 import TopBar from '../components/TopBar'
 import StatCard from '../components/StatCard'
 import { useT } from '../i18n'
@@ -99,11 +100,7 @@ export default function Progress({
           </div>
         )}
 
-        {loading ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
-            {t('common.loading')}
-          </div>
-        ) : !documents.length ? (
+        {!documents.length ? (
           <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
             Upload a document and complete a quiz to unlock your live progress dashboard.
           </div>
@@ -215,6 +212,7 @@ export default function Progress({
           </>
         )}
       </div>
+      {loading && <AppLoader fullScreen subtitle="Loading your progress dashboard" />}
     </div>
   )
 }

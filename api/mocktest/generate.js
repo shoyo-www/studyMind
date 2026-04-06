@@ -1,7 +1,6 @@
 // api/mocktest/generate.js
 // Generates a full exam question paper from a PDF
 // Types: short_answer, long_answer, numerical (maths), fill_blank
-// Primary: Gemini (native PDF) → Fallback: Groq (extracted text)
 
 import {
   checkRateLimit, ensureProfile, fail, getAdminSupabase,
@@ -11,15 +10,17 @@ import {
   getGeminiClient, getGeminiModelName, makeGeminiFilePart,
   runGeminiTask, shouldSkipGeminiDueToRecentQuota, uploadPdfToGemini, extractJsonFromText,
 } from '../_gemini.js'
-import { groqGenerateMockTest, isGroqConfigured } from '../_groq.js'
-import { extractPdfText } from '../_documentText.js'
 
 const VALID_DURATIONS = new Set([60, 90, 120, 150, 180])
 const VALID_MARKS     = new Set([50, 75, 100])
 
-// Any non-input Gemini error → try Groq
-function shouldFallback(err) {
-  return (err?.status || 0) !== 400
+function createUnavailableError(message, status = 503, retryAfterSeconds = null) {
+  const error = new Error(message)
+  error.status = status
+  if (retryAfterSeconds) {
+    error.retryAfterSeconds = retryAfterSeconds
+  }
+  return error
 }
 
 function buildPrompt({ title, subject, durationMinutes, totalMarks }) {
@@ -80,23 +81,15 @@ async function generateWithGemini({ doc, pdfBuffer, durationMinutes, totalMarks 
       responseMimeType:   'application/json',
       systemInstruction:  'Return only a valid JSON array of question objects. No markdown.',
     },
-  }), { label: 'MockTest/generate' })
+  }), {
+    label: 'Mock test generation',
+    userMessage: 'Mock test generation is temporarily busy. Please try again in about a minute.',
+    quotaUserMessage: 'Mock test generation is temporarily unavailable. Please try again later.',
+  })
 
   const parsed = JSON.parse(extractJsonFromText(result.text || '[]'))
   if (!Array.isArray(parsed) || !parsed.length) throw new Error('No questions generated')
   return { questions: parsed, model: getGeminiModelName() }
-}
-
-async function generateWithGroq({ doc, documentText, durationMinutes, totalMarks }) {
-  const prompt = buildPrompt({ title: doc.title, subject: doc.subject, durationMinutes, totalMarks })
-  const questions = await groqGenerateMockTest({
-    documentTitle: doc.title,
-    documentText,
-    prompt,
-    totalMarks,
-  })
-
-  return { questions, model: 'groq-fallback' }
 }
 
 export default async function handler(req, res) {
@@ -125,44 +118,20 @@ export default async function handler(req, res) {
     if (docErr || !doc) return fail(res, { status: 404, message: 'Document not found' })
     if (doc.mime_type !== 'application/pdf') return fail(res, { status: 400, message: 'Mock tests require a PDF document.' })
 
-    let questions = [], model = 'unknown'
-    let geminiErr = null
-    const canUseGroq = isGroqConfigured()
-    const shouldBypassGemini = canUseGroq && shouldSkipGeminiDueToRecentQuota()
+    const geminiApiKey = process.env.GEMINI_API_KEY
 
-    if (shouldBypassGemini) {
-      geminiErr = new Error('Mock test generation is temporarily unavailable because the Gemini API quota for this project has been exhausted. Please try again in about a minute.')
-      geminiErr.status = 429
-      geminiErr.geminiIssueType = 'quota'
-      console.warn('[MockTest/generate] Skipping Gemini because project quota is still cooling down.')
-    } else {
-      // ── Try Gemini ──────────────────────────────────────────────
-      try {
-        const { data: fileData, error: fileErr } = await supabase.storage.from('documents').download(doc.storage_path)
-        if (fileErr) throw fileErr
-        const pdfBuffer = Buffer.from(await fileData.arrayBuffer())
-        ;({ questions, model } = await generateWithGemini({ doc, pdfBuffer, durationMinutes: duration, totalMarks: marks }))
-      } catch (error) {
-        geminiErr = error
-      }
+    if (!geminiApiKey) {
+      return fail(res, createUnavailableError('Mock test generation is temporarily unavailable. Please try again later.'))
     }
 
-    if (geminiErr) {
-      if (!shouldFallback(geminiErr) || !canUseGroq) throw geminiErr
-      console.warn('[MockTest/generate] Gemini failed → Groq:', geminiErr.message)
-
-      let documentText = doc.document_text || ''
-      if (!documentText.trim()) {
-        const { data: fd } = await supabase.storage.from('documents').download(doc.storage_path)
-        if (fd) {
-          const { text } = await extractPdfText(Buffer.from(await fd.arrayBuffer()))
-          documentText = text || ''
-          if (documentText) supabase.from('documents').update({ document_text: documentText }).eq('id', doc.id).catch(() => {})
-        }
-      }
-
-      ;({ questions, model } = await generateWithGroq({ doc, documentText, durationMinutes: duration, totalMarks: marks }))
+    if (shouldSkipGeminiDueToRecentQuota()) {
+      return fail(res, createUnavailableError('Mock test generation is temporarily unavailable. Please try again in about a minute.', 429, 60))
     }
+
+    const { data: fileData, error: fileErr } = await supabase.storage.from('documents').download(doc.storage_path)
+    if (fileErr) throw fileErr
+    const pdfBuffer = Buffer.from(await fileData.arrayBuffer())
+    const { questions, model } = await generateWithGemini({ doc, pdfBuffer, durationMinutes: duration, totalMarks: marks })
 
     // Recalculate actual total marks from questions
     const actualTotal = questions.reduce((s, q) => s + (Number(q.marks) || 0), 0) || marks

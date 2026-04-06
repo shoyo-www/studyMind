@@ -1,6 +1,6 @@
 import { GoogleGenAI, createPartFromUri } from '@google/genai'
 
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
 const POLL_INTERVAL_MS = 1500
 const MAX_POLL_ATTEMPTS = 40
 const RETRYABLE_STATUS_CODES = new Set([429, 500, 503, 504])

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import AppLoader from '../components/AppLoader'
 import TopBar from '../components/TopBar'
 import { useT } from '../i18n'
 import { documentsApi, quizApi } from '../lib/api'
@@ -94,8 +95,10 @@ export default function Upload({
       }
 
       setSuccessMessage(
-        result.analysisAvailable
-          ? `${result.document.title} is ready. Chat and roadmap are available now, and your quiz plus 50 flashcards are being prepared in the background.`
+        result.analysisAvailable && result.roadmapReady
+          ? `${result.document.title} is ready. Your roadmap is available now, and you can start studying right away.`
+          : result.analysisAvailable
+          ? `${result.document.title} uploaded successfully. If the roadmap is still empty, open the Roadmap tab and generate it from the document.`
           : `${result.document.title} uploaded successfully. AI analysis currently works best for PDF documents.`
       )
     } catch (uploadError) {
@@ -127,7 +130,7 @@ export default function Upload({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <TopBar title={t('upload.title')} subtitle={t('upload.subtitle')} />
+      <TopBar onOpenSidebar={onOpenSidebar} title={t('upload.title')} subtitle={t('upload.subtitle')} />
       <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 sm:py-7 max-w-2xl w-full mx-auto">
         <input
           ref={fileInputRef}
@@ -161,7 +164,7 @@ export default function Upload({
             }}
             className="px-5 py-2 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-60"
           >
-            {uploading ? `${t('common.loading')} ${uploadProgress}%` : t('upload.chooseFile')}
+            {t('upload.chooseFile')}
           </button>
           {uploading && (
             <div className="mt-5">
@@ -171,6 +174,7 @@ export default function Upload({
             </div>
           )}
         </div>
+        {uploading && <AppLoader fullScreen subtitle={`Uploading your document${uploadProgress ? ` · ${uploadProgress}%` : ''}`} />}
 
         {error && (
           <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">

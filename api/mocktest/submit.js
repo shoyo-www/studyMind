@@ -1,15 +1,24 @@
 // api/mocktest/submit.js
 // Receives student's written answers → AI marks each one → returns full result
-// Primary: Gemini → Fallback: Groq
 
 import {
   fail, getAdminSupabase, ok, requireAuth, setCors,
   checkRateLimit, getClientIp,
 } from '../_helpers.js'
-import { getGeminiClient, getGeminiModelName, runGeminiTask } from '../_gemini.js'
-import { groqChat, isGroqConfigured } from '../_groq.js'
+import { getGeminiClient, getGeminiModelName, runGeminiTask, shouldSkipGeminiDueToRecentQuota } from '../_gemini.js'
 
-function shouldFallback(err) { return (err?.status || 0) !== 400 }
+function createUnavailableError(message, status = 503, retryAfterSeconds = null) {
+  const error = new Error(message)
+  error.status = status
+  if (retryAfterSeconds) {
+    error.retryAfterSeconds = retryAfterSeconds
+  }
+  return error
+}
+
+function isAiAvailabilityError(error) {
+  return error?.status === 429 || error?.status >= 500 || error?.geminiIssueType === 'busy' || error?.geminiIssueType === 'quota'
+}
 
 function getGrade(pct) {
   if (pct >= 90) return { grade: 'A+', label: 'Outstanding',  color: '#16a34a' }
@@ -47,24 +56,19 @@ Marking rules:
 - Do not inflate marks — be accurate`
 }
 
-async function markQuestion(q, answer, num, useGroq) {
+async function markQuestion(q, answer, num) {
   const prompt = markingPrompt(q, answer, num)
-  let raw = ''
-
-  if (useGroq) {
-    raw = await groqChat([
-      { role: 'system', content: 'You are a strict exam evaluator. Return only valid JSON.' },
-      { role: 'user',   content: prompt },
-    ], { temperature: 0.1, maxTokens: 512 })
-  } else {
-    const ai     = getGeminiClient()
-    const result = await runGeminiTask(() => ai.models.generateContent({
-      model:    getGeminiModelName(),
-      contents: [{ text: prompt }],
-      config:   { responseMimeType: 'application/json' },
-    }), { label: `Mark Q${num}` })
-    raw = result.text || ''
-  }
+  const ai = getGeminiClient()
+  const result = await runGeminiTask(() => ai.models.generateContent({
+    model:    getGeminiModelName(),
+    contents: [{ text: prompt }],
+    config:   { responseMimeType: 'application/json' },
+  }), {
+    label: `Mark Q${num}`,
+    userMessage: 'Auto-marking is temporarily busy. Please try again in about a minute.',
+    quotaUserMessage: 'Auto-marking is temporarily unavailable. Please try again later.',
+  })
+  const raw = result.text || ''
 
   try {
     const cleaned = raw.trim().replace(/^```json\s*/i, '').replace(/\s*```$/i, '')
@@ -109,6 +113,14 @@ export default async function handler(req, res) {
     if (!mockTestId)     return fail(res, { status: 400, message: 'mockTestId is required' })
     if (!answers.length) return fail(res, { status: 400, message: 'No answers provided' })
 
+    if (!process.env.GEMINI_API_KEY) {
+      return fail(res, createUnavailableError('Auto-marking is temporarily unavailable. Please try again later.'))
+    }
+
+    if (shouldSkipGeminiDueToRecentQuota()) {
+      return fail(res, createUnavailableError('Auto-marking is temporarily unavailable. Please try again in about a minute.', 429, 60))
+    }
+
     const supabase = getAdminSupabase()
 
     // Fetch test with model answers (server-side only)
@@ -122,8 +134,6 @@ export default async function handler(req, res) {
     const questions   = Array.isArray(test.questions) ? test.questions : []
     const answerMap   = new Map(answers.map(a => [Number(a.questionIndex), `${a.answer || ''}`.trim()]))
 
-    // Mark each question — switch to Groq if Gemini fails
-    let useGroq   = false
     const analysis = []
 
     for (let i = 0; i < questions.length; i++) {
@@ -131,20 +141,20 @@ export default async function handler(req, res) {
       const answer = answerMap.get(i) || ''
 
       try {
-        const result = await markQuestion(q, answer, i + 1, useGroq)
+        const result = await markQuestion(q, answer, i + 1)
         analysis.push(result)
       } catch (err) {
-        if (!useGroq && shouldFallback(err) && isGroqConfigured()) {
-          console.warn(`[MockTest/submit] Gemini failed at Q${i+1} → Groq`)
-          useGroq = true
-          try {
-            analysis.push(await markQuestion(q, answer, i + 1, true))
-          } catch {
-            analysis.push({ questionNumber: i+1, questionId: q.id||i+1, section: q.section, topic: q.topic, type: q.type, question: q.question, studentAnswer: answer, marksAwarded: 0, maxMarks: q.marks, feedback: 'Could not evaluate.', isCorrect: false, keyPointsCovered: [], keyPointsMissed: [] })
-          }
-        } else {
-          analysis.push({ questionNumber: i+1, questionId: q.id||i+1, section: q.section, topic: q.topic, type: q.type, question: q.question, studentAnswer: answer, marksAwarded: 0, maxMarks: q.marks, feedback: 'Evaluation failed.', isCorrect: false, keyPointsCovered: [], keyPointsMissed: [] })
+        if (isAiAvailabilityError(err)) {
+          throw createUnavailableError(
+            err?.status === 429
+              ? 'Auto-marking is temporarily unavailable. Please try again in about a minute.'
+              : 'Auto-marking is temporarily unavailable. Please try again later.',
+            err?.status === 429 ? 429 : 503,
+            err?.retryAfterSeconds || null,
+          )
         }
+
+        analysis.push({ questionNumber: i+1, questionId: q.id||i+1, section: q.section, topic: q.topic, type: q.type, question: q.question, studentAnswer: answer, marksAwarded: 0, maxMarks: q.marks, feedback: 'Evaluation failed.', isCorrect: false, keyPointsCovered: [], keyPointsMissed: [] })
       }
     }
 
