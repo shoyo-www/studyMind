@@ -17,7 +17,7 @@ export default function AppLoader({ subtitle = '', fullScreen = false }) {
         </svg>
 
         <div className="font-display text-xl font-bold tracking-tight text-zinc-900">
-          Study<span className="text-violet-600">Mind</span>
+          Prep<span className="text-violet-600">Pal</span>
         </div>
 
         {subtitle ? (
@@ -31,12 +31,12 @@ export default function AppLoader({ subtitle = '', fullScreen = false }) {
             <div
               key={index}
               style={{ animationDelay: `${index * 0.15}s` }}
-              className="h-1.5 w-1.5 rounded-full bg-violet-500 opacity-40 animate-[studymind-loader-bounce_1s_infinite]"
+              className="h-1.5 w-1.5 rounded-full bg-violet-500 opacity-40 animate-[preppal-loader-bounce_1s_infinite]"
             />
           ))}
         </div>
 
-        <style>{`@keyframes studymind-loader-bounce { 0%,100%{transform:translateY(0);opacity:.4} 50%{transform:translateY(-6px);opacity:1} }`}</style>
+        <style>{`@keyframes preppal-loader-bounce { 0%,100%{transform:translateY(0);opacity:.4} 50%{transform:translateY(-6px);opacity:1} }`}</style>
       </div>
     </div>
   )

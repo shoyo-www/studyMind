@@ -76,7 +76,7 @@ export default function Auth({ onBack, onSuccess, configError = '' }) {
           {/* Logo */}
           <button onClick={onBack} className="flex items-center gap-2 mb-16 group">
             <div className="font-bold text-xl" style={{ fontFamily: 'Syne,sans-serif', color: '#fff' }}>
-              Study<span style={{ color: '#6c63ff' }}>Mind</span>
+              Prep<span style={{ color: '#6c63ff' }}>Pal</span>
             </div>
             <span className="text-xs text-zinc-600 group-hover:text-zinc-400 transition-colors ml-1">← Back</span>
           </button>
@@ -125,7 +125,7 @@ export default function Auth({ onBack, onSuccess, configError = '' }) {
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-between mb-8">
             <div className="font-bold text-xl" style={{ fontFamily: 'Syne,sans-serif' }}>
-              Study<span className="text-violet-600">Mind</span>
+              Prep<span className="text-violet-600">Pal</span>
             </div>
             <button onClick={onBack} className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors">← Back</button>
           </div>
@@ -264,7 +264,7 @@ export default function Auth({ onBack, onSuccess, configError = '' }) {
                   className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all mt-1 disabled:opacity-60 hover:opacity-90"
                   style={{ background: '#6c63ff' }}
                 >
-                  {mode === 'login' ? 'Log in to StudyMind' : 'Create free account'}
+                  {mode === 'login' ? 'Log in to PrepPal' : 'Create free account'}
                 </button>
               </form>
 
@@ -291,7 +291,7 @@ export default function Auth({ onBack, onSuccess, configError = '' }) {
           )}
         </div>
       </div>
-      {loading && <AppLoader fullScreen subtitle={mode === 'login' ? 'Signing you in to StudyMind' : 'Creating your StudyMind account'} />}
+      {loading && <AppLoader fullScreen subtitle={mode === 'login' ? 'Signing you in to PrepPal' : 'Creating your PrepPal account'} />}
     </div>
   )
 }

@@ -42,9 +42,9 @@ export default function Sidebar({ screen, setScreen, user, profile, onClose }) {
           </div>
           <div>
             <div className="font-display font-bold text-lg tracking-tight text-zinc-900 leading-tight">
-              Study<span className="text-violet-600">Mind</span>
+              Prep<span className="text-violet-600">Pal</span>
             </div>
-            <div className="text-[11px] text-zinc-400 font-light">AI-powered learning</div>
+            <div className="text-[11px] text-zinc-400 font-light">Your exam prep partner</div>
           </div>
         </div>
         {/* Close button — mobile only */}

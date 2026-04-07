@@ -121,7 +121,7 @@ export default async function handler(req, res) {
       ],
       config: {
         systemInstruction: [
-          'You are StudyMind, an AI study assistant.',
+          'You are PrepPal, an exam prep assistant.',
           `The student uploaded a document titled "${doc.title}".`,
           'Answer ONLY from the content in the provided PDF.',
           'If the answer is not in the PDF, say exactly: "I could not find that in your document."',

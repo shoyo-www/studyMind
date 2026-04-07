@@ -163,7 +163,7 @@ export async function groqChatWithText({ documentTitle, documentText, message, h
 
   // ── System prompt ─────────────────────────────────────────────
   // Explicit, strong instruction to ONLY use provided content
-  const systemPrompt = `You are StudyMind AI, a focused study assistant working like NotebookLM.
+  const systemPrompt = `You are PrepPal AI, a focused study assistant working like NotebookLM.
 
 CRITICAL RULES:
 1. You ONLY answer from the DOCUMENT SOURCE TEXT provided below — nothing else
@@ -266,7 +266,7 @@ export async function groqGenerateStudySet({ documentTitle, documentText, count,
       {
         role: 'system',
         content: [
-          'You are StudyMind AI, a study content generator.',
+          'You are PrepPal AI, a study content generator.',
           'Generate questions and flashcards ONLY from the document text provided.',
           'Never invent facts not present in the document.',
           'Return only valid JSON.',

@@ -1,4 +1,4 @@
-# StudyMind — Complete Project Specification & Prompt
+# PrepPal — Complete Project Specification & Prompt
 
 ---
 
@@ -46,7 +46,7 @@
 ## 3. COMPLETE FILE STRUCTURE
 
 ```
-studymind/
+preppal/
 ├── index.html                          # HTML entry point (loads Google Fonts)
 ├── package.json                        # Dependencies: react, vite, tailwind, lucide-react
 ├── vite.config.js                      # Vite + React plugin config
@@ -359,7 +359,7 @@ t('quiz.question', { current: 2, total: 10 })     // → 'Question 2 of 10'
 ```
 
 **Supported languages:** English (en) + Hindi (hi)
-**Language persistence:** Saved in `localStorage` as `studymind_lang`
+**Language persistence:** Saved in `localStorage` as `preppal_lang`
 **Font switching:** `[data-lang='hi']` CSS selector switches body font to Noto Sans Devanagari
 **Fallback:** Missing Hindi keys fall back to English automatically
 
@@ -502,7 +502,7 @@ Return ONLY a JSON array:
 
 ### Phase 3 — Growth (Months 3–6)
 - SEO content: "How to study for NEET", "Best study tools for JEE"
-- YouTube channel: study tips + StudyMind tutorials
+- YouTube channel: study tips + PrepPal tutorials
 - Referral program: give 1 month free for each referral that signs up
 - Partner with coaching institutes for bulk Institute plans
 
@@ -545,7 +545,7 @@ Return ONLY a JSON array:
 - Create `documents` storage bucket (private)
 - Enable Google OAuth in Supabase Auth settings
 - Test full flow end to end
-- Point custom domain (studymind.in)
+- Point custom domain (preppal.in)
 
 **Week 4 — Polish:**
 - Add loading skeletons for all data fetches
@@ -561,7 +561,7 @@ Return ONLY a JSON array:
 
 ```bash
 # 1. Unzip and enter the folder
-unzip studymind.zip && cd studymind
+unzip preppal.zip && cd preppal
 
 # 2. Install dependencies
 npm install
@@ -587,7 +587,7 @@ npx vercel --prod
 
 If you want to continue building this project with an AI assistant, paste this entire document and add:
 
-> "Here is the complete specification for StudyMind. The frontend UI is fully built. I now need you to [SPECIFIC TASK]. Please refer to the file structure, tech stack, and API architecture described above."
+> "Here is the complete specification for PrepPal. The frontend UI is fully built. I now need you to [SPECIFIC TASK]. Please refer to the file structure, tech stack, and API architecture described above."
 
 Replace [SPECIFIC TASK] with one of:
 - "wire the Upload page to the real Gemini API"

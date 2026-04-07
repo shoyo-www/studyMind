@@ -1,6 +1,6 @@
 {
-  "name": "StudyMind — AI Learning Platform",
-  "short_name": "StudyMind",
+  "name": "PrepPal — Exam Preparation Partner",
+  "short_name": "PrepPal",
   "description": "Upload your notes and study with AI — quizzes, flashcards, mock tests and your personal AI tutor.",
   "start_url": "/",
   "display": "standalone",

@@ -158,7 +158,7 @@ export default function App() {
       {/* ── Right AI Chat Panel ── */}
       <ChatPanel activeDocument={activeDocument} />
       <BottomNav screen={resolvedScreen} setScreen={navigate} />
-      {appLoading && <AppLoader fullScreen subtitle="Refreshing your StudyMind workspace" />}
+      {appLoading && <AppLoader fullScreen subtitle="Refreshing your PrepPal workspace" />}
       <Analytics />
     </div>
   )

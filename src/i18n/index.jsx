@@ -7,7 +7,7 @@ import en from './en.js'
 import hi from './hi.js'
 
 const TRANSLATIONS = { en, hi }
-const STORAGE_KEY  = 'studymind_lang'
+const STORAGE_KEY  = 'preppal_lang'
 
 // ── Context ───────────────────────────────────────────────────────────
 const LangContext = createContext(null)
