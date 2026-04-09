@@ -445,7 +445,7 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
 // ════════════════════════════════════════════════════════════════════
 // PHASE 3 — Results
 // ════════════════════════════════════════════════════════════════════
-function ResultsPhase({ result, onRetry, onBack }) {
+function ResultsPhase({ result, onRetry, onBack, onPracticeTopic, onReviewTopic }) {
   const [tab,       setTab]       = useState('overview')
   const [expandedQ, setExpandedQ] = useState(null)
 
@@ -533,6 +533,22 @@ function ResultsPhase({ result, onRetry, onBack }) {
                     </span>
                   ))}
                 </div>
+                {!!result.weakTopics[0]?.topic && (
+                  <div className="flex flex-wrap gap-3 mt-4">
+                    <button
+                      onClick={() => onPracticeTopic?.(result.weakTopics[0].topic)}
+                      className="px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm hover:bg-zinc-700 transition-colors"
+                    >
+                      Focused quiz on {result.weakTopics[0].topic}
+                    </button>
+                    <button
+                      onClick={() => onReviewTopic?.(result.weakTopics[0].topic)}
+                      className="px-4 py-2 rounded-lg border border-red-200 bg-white text-red-600 text-sm hover:bg-red-50 transition-colors"
+                    >
+                      Flashcards for {result.weakTopics[0].topic}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             {result.strongTopics?.length > 0 && (
@@ -638,7 +654,12 @@ function ResultsPhase({ result, onRetry, onBack }) {
 // ════════════════════════════════════════════════════════════════════
 // Main component
 // ════════════════════════════════════════════════════════════════════
-export default function MockTest({ onOpenSidebar, documents = [], activeDocument = null }) {
+export default function MockTest({
+  onOpenSidebar,
+  documents = [],
+  activeDocument = null,
+  openStudyFocus,
+}) {
   const [phase,      setPhase]      = useState('setup')
   const [mockTest,   setMockTest]   = useState(null)
   const [questions,  setQuestions]  = useState([])
@@ -730,6 +751,18 @@ export default function MockTest({ onOpenSidebar, documents = [], activeDocument
           result={result}
           onRetry={() => { setPhase('exam'); setResult(null) }}
           onBack={() => { setPhase('setup'); setMockTest(null); setQuestions([]); setResult(null); setError('') }}
+          onPracticeTopic={(topic) => openStudyFocus?.({
+            documentId: activeDocument?.id || mockTest?.documentId || null,
+            topic,
+            screen: 'quiz',
+            origin: 'mocktest_result',
+          })}
+          onReviewTopic={(topic) => openStudyFocus?.({
+            documentId: activeDocument?.id || mockTest?.documentId || null,
+            topic,
+            screen: 'flashcards',
+            origin: 'mocktest_result',
+          })}
         />
       )}
       {(generating || submitting) && (

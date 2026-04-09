@@ -196,7 +196,13 @@ function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset }) {
   )
 }
 
-export default function Flashcards({ activeDocument, setScreen }) {
+export default function Flashcards({
+  activeDocument,
+  setScreen,
+  studyFocus,
+  openStudyFocus,
+  clearStudyFocus,
+}) {
   const { t } = useT()
   const [quiz, setQuiz] = useState(null)
   const [allCards, setAllCards] = useState([])
@@ -209,12 +215,15 @@ export default function Flashcards({ activeDocument, setScreen }) {
   const [error, setError] = useState('')
 
   const activeDocumentId = activeDocument?.id || null
+  const focusedTopic = studyFocus?.documentId === activeDocumentId ? `${studyFocus?.topic || ''}`.trim() : ''
   const activeDocumentIsPdf = activeDocument?.mime_type === 'application/pdf'
   const total = allCards.length
   const doneCount = known.length + skipped.length
   const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0
   const showLoader = loading || pending
-  const loaderSubtitle = pending ? 'Preparing your flashcards from the selected PDF' : 'Loading your flashcards'
+  const loaderSubtitle = pending
+    ? `Preparing your ${focusedTopic ? `${focusedTopic} ` : ''}flashcards from the selected PDF`.replace(/\s+/g, ' ').trim()
+    : 'Loading your flashcards'
 
   function resetRound(cards) {
     setDeck([...cards])
@@ -260,7 +269,7 @@ export default function Flashcards({ activeDocument, setScreen }) {
     }
 
     try {
-      const result = await quizApi.getLatest(documentId, { type: 'flashcard' })
+      const result = await quizApi.getLatest(documentId, { type: 'flashcard', topic: focusedTopic || undefined })
       const status = result?.status || result?.quiz?.status || 'missing'
 
       if (status === 'ready' && (result?.questions?.length || result?.quiz?.questions?.length)) {
@@ -311,6 +320,7 @@ export default function Flashcards({ activeDocument, setScreen }) {
       const result = await quizApi.generate(activeDocument.id, {
         count: DEFAULT_FLASHCARD_COUNT,
         type: 'flashcard',
+        topic: focusedTopic || null,
       })
 
       if ((result?.status || result?.quiz?.status) === 'pending') {
@@ -380,7 +390,7 @@ export default function Flashcards({ activeDocument, setScreen }) {
     }
 
     void loadLatestFlashcards(activeDocumentId)
-  }, [activeDocumentId, activeDocument?.mime_type])
+  }, [activeDocumentId, activeDocument?.mime_type, focusedTopic])
 
   useEffect(() => {
     if (!pending || !activeDocumentId) return
@@ -393,7 +403,7 @@ export default function Flashcards({ activeDocument, setScreen }) {
   }, [pending, activeDocumentId])
 
   const subtitle = activeDocument
-    ? `${t('flashcards.subtitle')} · ${activeDocument.title}`
+    ? `${t('flashcards.subtitle')} · ${activeDocument.title}${focusedTopic ? ` · Focus: ${focusedTopic}` : ''}`
     : t('flashcards.subtitle')
 
   return (
@@ -413,6 +423,21 @@ export default function Flashcards({ activeDocument, setScreen }) {
       />
 
       <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start pt-6 px-6 bg-zinc-50">
+        {focusedTopic && (
+          <div className="w-full max-w-md mb-4 rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm text-violet-800">
+            <div className="font-semibold mb-1">Focused revision is on</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span>{focusedTopic}</span>
+              <button
+                onClick={clearStudyFocus}
+                className="text-xs px-2.5 py-1 rounded-full border border-violet-200 bg-white text-violet-600 hover:bg-violet-100 transition-colors"
+              >
+                Clear focus
+              </button>
+            </div>
+          </div>
+        )}
+
         {!activeDocument ? (
           <div className="max-w-md w-full rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-500">
             {t('flashcards.selectDocument')}
@@ -432,7 +457,9 @@ export default function Flashcards({ activeDocument, setScreen }) {
           </div>
         ) : !allCards.length ? (
           <div className="max-w-md w-full rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-500">
-            {t('flashcards.empty')}
+            {focusedTopic
+              ? `No flashcards are ready yet for ${focusedTopic}. Generate a focused deck to start revising this weak area.`
+              : t('flashcards.empty')}
           </div>
         ) : (
           <>
@@ -474,6 +501,13 @@ export default function Flashcards({ activeDocument, setScreen }) {
                 <p className="text-zinc-400 text-sm mb-8">
                   You knew <strong className="text-emerald-600">{known.length}</strong> and need to review <strong className="text-red-500">{skipped.length}</strong>.
                 </p>
+                {focusedTopic && (
+                  <div className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 mb-6">
+                    {skipped.length > 0
+                      ? `You still need another pass on ${focusedTopic}. Review the skipped cards now, then test yourself with a focused quiz.`
+                      : `Great job. You look stronger on ${focusedTopic}. A focused quiz is the best next step.`}
+                  </div>
+                )}
 
                 <div style={{ position: 'relative', width: 112, height: 112, marginBottom: 28 }}>
                   <svg style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }} viewBox="0 0 100 100">
@@ -521,6 +555,14 @@ export default function Flashcards({ activeDocument, setScreen }) {
                   >
                     Take a quiz instead →
                   </button>
+                  {focusedTopic && (
+                    <button
+                      onClick={() => openStudyFocus?.({ documentId: activeDocumentId, topic: focusedTopic, screen: 'quiz', origin: 'flashcards_result' })}
+                      className="w-full py-3 rounded-xl text-sm font-medium border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 transition-all"
+                    >
+                      Quiz me on {focusedTopic}
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (

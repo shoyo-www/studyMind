@@ -5,7 +5,7 @@ import {
   ok,
   requireAuth,
   setCors,
-} from './_helpers.js'
+} from '../server/helpers.js'
 
 function getTopicCount(document) {
   return Array.isArray(document?.topics) ? document.topics.length : 0

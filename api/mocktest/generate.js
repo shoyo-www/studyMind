@@ -8,13 +8,13 @@
 import {
   checkRateLimit, ensureProfile, fail, getAdminSupabase,
   getClientIp, ok, requireAuth, sanitizeFileName, setCors,
-} from '../_helpers.js'
+} from '../../server/helpers.js'
 import {
   getGeminiClient, getGeminiModelName, makeGeminiFilePart,
   runGeminiTask, shouldSkipGeminiDueToRecentQuota, uploadPdfToGemini, extractJsonFromText,
-} from '../_gemini.js'
-import { groqGenerateMockTest, isGroqConfigured } from '../_groq.js'
-import { extractPdfText } from '../_documentText.js'
+} from '../../server/gemini.js'
+import { groqGenerateMockTest, isGroqConfigured } from '../../server/groq.js'
+import { extractPdfText } from '../../server/documentText.js'
 
 const DEFAULT_DURATION_MINUTES = 180
 const DEFAULT_TOTAL_MARKS = 100
@@ -144,6 +144,7 @@ export default async function handler(req, res) {
       return ok(res, {
         mockTest: {
           id:              existing.id,
+          documentId,
           title:           existing.title,
           subject:         existing.subject,
           durationMinutes: existing.duration_minutes,
@@ -216,6 +217,7 @@ export default async function handler(req, res) {
     return ok(res, {
       mockTest: {
         id:              mockTest.id,
+        documentId,
         title:           mockTest.title,
         subject:         mockTest.subject,
         durationMinutes: mockTest.duration_minutes,

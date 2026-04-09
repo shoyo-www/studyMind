@@ -23,7 +23,12 @@ function formatPercentage(value) {
 }
 
 export default function Progress({
-  onOpenSidebar, documents = [], setScreen, setSelectedDocumentId }) {
+  onOpenSidebar,
+  documents = [],
+  setScreen,
+  setSelectedDocumentId,
+  openStudyFocus,
+}) {
   const { t } = useT()
   const [progressData, setProgressData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -51,6 +56,21 @@ export default function Progress({
   const readiness = progressData?.readiness || { subjects: [], overallPct: 0 }
   const activity = progressData?.activity || { cells: [], streakDays: 0, activeDays: 0 }
   const weakTopics = progressData?.weakTopics || []
+  const topWeakTopic = weakTopics[0] || null
+  const coachTitle = topWeakTopic
+    ? `Focus next on ${topWeakTopic.topic}`
+    : documents.length
+      ? 'You are ready for your next study step'
+      : 'Start your first study loop'
+  const coachDescription = topWeakTopic
+    ? topWeakTopic.score === null
+      ? `This topic has not been covered properly yet. Start with a focused quiz or flashcards to turn it into a strength.`
+      : `Your recent performance shows this is your weakest area right now at ${topWeakTopic.score}%. Review it first before moving on.`
+    : documents.length
+      ? readiness.overallPct >= 70
+        ? 'Your readiness is building well. The next high-impact step is a full mock test to check exam pressure.'
+        : 'Keep the loop moving: roadmap, focused practice, then a mock test.'
+      : 'Upload a PDF and we will build your roadmap, practice loop, and revision targets.'
 
   const statCards = [
     {
@@ -97,6 +117,15 @@ export default function Progress({
     if (topic?.documentId) {
       setSelectedDocumentId(topic.documentId)
     }
+    if (topic?.topic) {
+      openStudyFocus?.({
+        documentId: topic.documentId,
+        topic: topic.topic,
+        screen: 'quiz',
+        origin: 'progress',
+      })
+      return
+    }
     setScreen('quiz')
   }
 
@@ -106,7 +135,7 @@ export default function Progress({
         title={t('progress.title')}
         subtitle={t('progress.subtitle')}
         action={
-          <button onClick={() => setScreen('quiz')} className="px-4 py-2 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors">
+          <button onClick={() => setScreen('mocktest')} className="px-4 py-2 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors">
             {t('progress.mockExam')}
           </button>
         }
@@ -124,6 +153,55 @@ export default function Progress({
           </div>
         ) : (
           <>
+            <div className="mb-6 sm:mb-8 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 via-white to-emerald-50 px-5 py-5">
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-500 mb-2">Next Best Step</div>
+              <div className="text-lg font-semibold text-zinc-900 mb-2">{coachTitle}</div>
+              <div className="text-sm text-zinc-600 leading-relaxed mb-4">{coachDescription}</div>
+              <div className="flex flex-wrap gap-3">
+                {topWeakTopic ? (
+                  <>
+                    <button
+                      onClick={() => openStudyFocus?.({
+                        documentId: topWeakTopic.documentId,
+                        topic: topWeakTopic.topic,
+                        screen: 'quiz',
+                        origin: 'progress',
+                      })}
+                      className="px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm hover:bg-zinc-700 transition-colors"
+                    >
+                      Take focused quiz
+                    </button>
+                    <button
+                      onClick={() => openStudyFocus?.({
+                        documentId: topWeakTopic.documentId,
+                        topic: topWeakTopic.topic,
+                        screen: 'flashcards',
+                        origin: 'progress',
+                      })}
+                      className="px-4 py-2 rounded-lg border border-violet-200 bg-white text-violet-700 text-sm hover:bg-violet-50 transition-colors"
+                    >
+                      Review with flashcards
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setScreen('roadmap')}
+                      className="px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm hover:bg-zinc-700 transition-colors"
+                    >
+                      Open roadmap
+                    </button>
+                    <button
+                      onClick={() => setScreen('mocktest')}
+                      className="px-4 py-2 rounded-lg border border-zinc-200 bg-white text-zinc-700 text-sm hover:bg-zinc-50 transition-colors"
+                    >
+                      Take mock test
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
               {statCards.map((stat) => <StatCard key={stat.label} {...stat} />)}
             </div>

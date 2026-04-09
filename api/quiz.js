@@ -7,7 +7,7 @@ import {
   requireAuth,
   sanitizeFileName,
   setCors,
-} from './_helpers.js'
+} from '../server/helpers.js'
 import {
   extractJsonFromText,
   getGeminiClient,
@@ -17,7 +17,7 @@ import {
   shouldSkipGeminiDueToRecentQuota,
   shouldTryAnotherGeminiModel,
   uploadPdfToGemini,
-} from './_gemini.js'
+} from '../server/gemini.js'
 
 const ALLOWED_TYPES = new Set(['mcq', 'truefalse', 'flashcard'])
 const QUIZ_STATUS = {
@@ -193,6 +193,15 @@ function hasSavedQuizProgress(quiz) {
   return Array.isArray(quiz?.answers) && quiz.answers.some((answer) => answer !== null && answer !== undefined)
 }
 
+function sanitizeAnswers(answers) {
+  if (!Array.isArray(answers)) return []
+  return answers.map((answer) => {
+    if (answer === null || answer === undefined) return null
+    const numericAnswer = Number(answer)
+    return Number.isInteger(numericAnswer) && numericAnswer >= 0 ? numericAnswer : null
+  })
+}
+
 function buildQuizResponse(quiz) {
   const safeQuiz = serializeQuiz(quiz)
   return {
@@ -235,6 +244,7 @@ async function loadLatestQuiz(supabase, userId, documentId, options = {}) {
   const {
     source = null,
     type = null,
+    topic = null,
     resumeOnly = false,
   } = options
 
@@ -252,6 +262,10 @@ async function loadLatestQuiz(supabase, userId, documentId, options = {}) {
 
   if (type && ALLOWED_TYPES.has(type)) {
     query = query.eq('type', type)
+  }
+
+  if (topic) {
+    query = query.eq('topic', topic)
   }
 
   const { data, error } = await query
@@ -355,6 +369,7 @@ async function handleGet(req, res) {
   const user = await requireAuth(req)
   const documentId = req.query?.documentId
   const requestedType = req.query?.type
+  const topic = `${req.query?.topic || ''}`.trim() || null
   const type = ALLOWED_TYPES.has(requestedType) ? requestedType : null
   const resumeOnly = req.query?.resumeOnly === '1'
 
@@ -365,7 +380,7 @@ async function handleGet(req, res) {
   const supabase = getAdminSupabase()
   await fetchDocument(supabase, user.id, documentId)
 
-  const latestQuiz = await loadLatestQuiz(supabase, user.id, documentId, { type, resumeOnly })
+  const latestQuiz = await loadLatestQuiz(supabase, user.id, documentId, { type, topic, resumeOnly })
   return ok(res, buildQuizResponse(latestQuiz))
 }
 
@@ -482,6 +497,107 @@ async function handlePost(req, res) {
   return fail(res, geminiError)
 }
 
+async function handlePatch(req, res) {
+  const user = await requireAuth(req)
+  const supabase = getAdminSupabase()
+  const { action, quizId, answers = [], currentIndex = 0, score } = req.body || {}
+
+  if (!quizId) {
+    return fail(res, { status: 400, message: 'We could not find that quiz. Please refresh and try again.' })
+  }
+
+  if (action === 'progress') {
+    const safeCurrentIndex = Math.max(0, Number(currentIndex) || 0)
+    const safeAnswers = sanitizeAnswers(answers)
+
+    const { data: quiz, error } = await supabase
+      .from('quizzes')
+      .update({
+        answers: safeAnswers,
+        current_index: safeCurrentIndex,
+      })
+      .eq('id', quizId)
+      .eq('user_id', user.id)
+      .eq('attempted', false)
+      .select('id, answers, current_index, attempted')
+      .single()
+
+    if (error || !quiz) {
+      return fail(res, { status: 404, message: 'We could not save your quiz progress. Please try again.' })
+    }
+
+    return ok(res, { quiz })
+  }
+
+  if (action === 'score') {
+    const numericScore = Number(score)
+
+    if (!Number.isFinite(numericScore) || numericScore < 0) {
+      return fail(res, { status: 400, message: 'That score does not look valid. Please try again.' })
+    }
+
+    const { data: existingQuiz, error: existingQuizError } = await supabase
+      .from('quizzes')
+      .select('id, document_id, attempted')
+      .eq('id', quizId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (existingQuizError || !existingQuiz) {
+      return fail(res, { status: 404, message: 'We could not find that quiz. Please refresh and try again.' })
+    }
+
+    const wasAlreadyAttempted = Boolean(existingQuiz.attempted)
+
+    const { data: quiz, error } = await supabase
+      .from('quizzes')
+      .update({
+        answers: sanitizeAnswers(answers),
+        current_index: Math.max(0, Number(currentIndex) || 0),
+        score: Math.round(numericScore),
+        attempted: true,
+      })
+      .eq('id', quizId)
+      .eq('user_id', user.id)
+      .select('id, score, attempted, answers, current_index')
+      .single()
+
+    if (error || !quiz) {
+      return fail(res, { status: 404, message: 'We could not find that quiz. Please refresh and try again.' })
+    }
+
+    if (!wasAlreadyAttempted && existingQuiz.document_id) {
+      const { data: document, error: documentError } = await supabase
+        .from('documents')
+        .select('id, topics, pct_covered')
+        .eq('id', existingQuiz.document_id)
+        .eq('user_id', user.id)
+        .single()
+
+      if (!documentError && document) {
+        const topicCount = Array.isArray(document.topics) ? document.topics.length : 0
+        if (topicCount > 0) {
+          const coveredCount = Math.round(topicCount * (Math.max(0, Math.min(100, Number(document.pct_covered) || 0)) / 100))
+          const nextCoveredCount = Math.min(topicCount, coveredCount + 1)
+          const nextPctCovered = Math.round((nextCoveredCount / topicCount) * 100)
+
+          if (nextPctCovered !== Number(document.pct_covered || 0)) {
+            await supabase
+              .from('documents')
+              .update({ pct_covered: nextPctCovered })
+              .eq('id', document.id)
+              .eq('user_id', user.id)
+          }
+        }
+      }
+    }
+
+    return ok(res, { quiz })
+  }
+
+  return fail(res, { status: 400, message: 'That quiz action is not available here.' })
+}
+
 export default async function handler(req, res) {
   setCors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
@@ -493,6 +609,10 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       return await handlePost(req, res)
+    }
+
+    if (req.method === 'PATCH') {
+      return await handlePatch(req, res)
     }
 
     return fail(res, { status: 405, message: 'That action is not available here.' })

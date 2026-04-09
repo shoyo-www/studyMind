@@ -1,4 +1,4 @@
-import { requireAuth, getAdminSupabase, ok, fail, setCors } from './_helpers.js'
+import { requireAuth, getAdminSupabase, ok, fail, setCors } from '../server/helpers.js'
 
 export default async function handler(req, res) {
   setCors(req, res)

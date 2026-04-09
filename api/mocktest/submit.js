@@ -4,8 +4,8 @@
 import {
   fail, getAdminSupabase, ok, requireAuth, setCors,
   checkRateLimit, getClientIp,
-} from '../_helpers.js'
-import { getGeminiClient, getGeminiModelName, runGeminiTask, shouldSkipGeminiDueToRecentQuota } from '../_gemini.js'
+} from '../../server/helpers.js'
+import { getGeminiClient, getGeminiModelName, runGeminiTask, shouldSkipGeminiDueToRecentQuota } from '../../server/gemini.js'
 
 function createUnavailableError(message, status = 503, retryAfterSeconds = null) {
   const error = new Error(message)

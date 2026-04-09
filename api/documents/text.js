@@ -3,12 +3,12 @@ import {
   getAdminSupabase,
   requireAuth,
   setCors,
-} from '../_helpers.js'
+} from '../../server/helpers.js'
 import {
   extractPdfText,
   isMissingDocumentTextColumnError,
   isSupabaseNoRowsError,
-} from '../_documentText.js'
+} from '../../server/documentText.js'
 
 export default async function handler(req, res) {
   setCors(req, res)

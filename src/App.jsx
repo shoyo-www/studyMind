@@ -62,6 +62,7 @@ export default function App() {
   const [appLoading,  setAppLoading]  = useState(false)
   const [appError,    setAppError]    = useState('')
   const [selectedDocumentId, setSelectedDocumentId] = useState(null)
+  const [studyFocus, setStudyFocus] = useState({ documentId: null, topic: '', origin: '' })
   const [sidebarOpen, setSidebarOpen] = useState(false)  // mobile drawer
   const [appBooting,  setAppBooting]  = useState(true)   // initial session check
 
@@ -90,6 +91,28 @@ export default function App() {
     setSidebarOpen(false)
   }
 
+  function clearStudyFocus() {
+    setStudyFocus({ documentId: null, topic: '', origin: '' })
+  }
+
+  function openStudyFocus({ documentId = null, topic = '', screen: nextScreen = 'quiz', origin = '' } = {}) {
+    const normalizedTopic = `${topic || ''}`.trim()
+    const nextDocumentId = documentId || selectedDocumentId || null
+
+    if (nextDocumentId) {
+      setSelectedDocumentId(nextDocumentId)
+    }
+
+    setStudyFocus({
+      documentId: nextDocumentId,
+      topic: normalizedTopic,
+      origin: origin || nextScreen,
+    })
+
+    setScreen(nextScreen)
+    setSidebarOpen(false)
+  }
+
   async function handleLogout() {
     setAppLoading(true)
     setAppError('')
@@ -109,7 +132,15 @@ export default function App() {
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) { setUser(session.user); setView('app') }
-      else { setUser(null); setProfileData(null); setDocuments([]); setSelectedDocumentId(null); setAppError(''); setView('landing') }
+      else {
+        setUser(null)
+        setProfileData(null)
+        setDocuments([])
+        setSelectedDocumentId(null)
+        setStudyFocus({ documentId: null, topic: '', origin: '' })
+        setAppError('')
+        setView('landing')
+      }
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -121,6 +152,13 @@ export default function App() {
     if (!documents.some(d => d.id === selectedDocumentId)) setSelectedDocumentId(documents[0].id)
   }, [documents, selectedDocumentId])
 
+  useEffect(() => {
+    if (!studyFocus.documentId) return
+    if (selectedDocumentId && studyFocus.documentId !== selectedDocumentId) {
+      clearStudyFocus()
+    }
+  }, [selectedDocumentId, studyFocus.documentId])
+
   if (appBooting) return <AppLoader fullScreen />
 
   if (view === 'landing') return <Landing onGetStarted={() => setView('auth')} onLogin={() => setView('auth')} />
@@ -129,7 +167,24 @@ export default function App() {
   const resolvedScreen = screen === 'pricing' ? 'dashboard' : screen
   const Page = PAGES[resolvedScreen] || Dashboard
   const activeDocument = documents.find(d => d.id === selectedDocumentId) || null
-  const pageProps = { user, profile: profileData?.profile, stats: profileData?.stats, documents, activeDocument, selectedDocumentId, setSelectedDocumentId, refreshAppData, appLoading, appError, openDocument, setScreen: navigate, onLogout: handleLogout }
+  const pageProps = {
+    user,
+    profile: profileData?.profile,
+    stats: profileData?.stats,
+    documents,
+    activeDocument,
+    selectedDocumentId,
+    setSelectedDocumentId,
+    refreshAppData,
+    appLoading,
+    appError,
+    openDocument,
+    setScreen: navigate,
+    onLogout: handleLogout,
+    studyFocus,
+    openStudyFocus,
+    clearStudyFocus,
+  }
 
   return (
     <div className="flex h-screen bg-zinc-50 overflow-hidden">

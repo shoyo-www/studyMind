@@ -6,7 +6,7 @@ import {
   ok,
   requireAuth,
   setCors,
-} from './_helpers.js'
+} from '../server/helpers.js'
 
 const ACTIVITY_DAYS = 28
 

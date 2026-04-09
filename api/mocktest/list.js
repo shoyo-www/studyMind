@@ -1,5 +1,5 @@
 // api/mocktest/list.js
-import { fail, getAdminSupabase, ok, requireAuth, setCors } from '../_helpers.js'
+import { fail, getAdminSupabase, ok, requireAuth, setCors } from '../../server/helpers.js'
 
 export default async function handler(req, res) {
   setCors(req, res)

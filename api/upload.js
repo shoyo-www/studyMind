@@ -10,12 +10,12 @@ import {
   requireAuth,
   sanitizeFileName,
   setCors,
-} from './_helpers.js'
+} from '../server/helpers.js'
 import {
   extractPdfText,
   isMissingDocumentTextColumnError,
-} from './_documentText.js'
-import { buildRoadmapTopicsFromText } from './_roadmapTopics.js'
+} from '../server/documentText.js'
+import { buildRoadmapTopicsFromText } from '../server/roadmapTopics.js'
 import {
   MAX_UPLOAD_FILE_SIZE,
   getFirstUploadedFile,
@@ -30,7 +30,7 @@ import {
   runGeminiTask,
   shouldSkipGeminiDueToRecentQuota,
   uploadPdfToGemini,
-} from './_gemini.js'
+} from '../server/gemini.js'
 
 const AI_SUPPORTED_MIME_TYPES = new Set(['application/pdf'])
 

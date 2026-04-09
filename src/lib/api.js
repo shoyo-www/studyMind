@@ -67,6 +67,10 @@ function buildQuizQuery(documentId, options = {}) {
     params.set('type', options.type)
   }
 
+  if (options.topic) {
+    params.set('topic', options.topic)
+  }
+
   if (options.resumeOnly) {
     params.set('resumeOnly', '1')
   }
@@ -159,9 +163,9 @@ export const quizApi = {
     apiFetch(buildQuizQuery(documentId, options)),
 
   saveProgress: (quizId, answers, currentIndex) =>
-    apiFetch('/quiz/progress', {
-      method: 'POST',
-      body: JSON.stringify({ quizId, answers, currentIndex }),
+    apiFetch('/quiz', {
+      method: 'PATCH',
+      body: JSON.stringify({ action: 'progress', quizId, answers, currentIndex }),
     }),
 
   // Start a background pre-generation request after upload
@@ -178,9 +182,9 @@ export const quizApi = {
 
   // Save quiz score
   saveScore: (quizId, score, answers = [], currentIndex = 0) =>
-    apiFetch('/quiz/score', {
-      method: 'POST',
-      body:   JSON.stringify({ quizId, score, answers, currentIndex }),
+    apiFetch('/quiz', {
+      method: 'PATCH',
+      body:   JSON.stringify({ action: 'score', quizId, score, answers, currentIndex }),
     }),
 }
 

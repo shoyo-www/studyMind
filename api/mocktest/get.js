@@ -2,7 +2,7 @@
 // Fetches an existing mock test by ID for resuming
 // Returns questions WITHOUT modelAnswer (server-side only)
 
-import { fail, getAdminSupabase, ok, requireAuth, setCors } from '../_helpers.js'
+import { fail, getAdminSupabase, ok, requireAuth, setCors } from '../../server/helpers.js'
 
 export default async function handler(req, res) {
   setCors(req, res)
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const { data: mt, error } = await supabase
       .from('mock_tests')
       .select(`
-        id, title, subject, duration_minutes, total_marks, questions, created_at,
+        id, document_id, title, subject, duration_minutes, total_marks, questions, created_at,
         mock_test_submissions ( id, marks_obtained, percentage, submitted_at )
       `)
       .eq('id', id)
@@ -43,6 +43,7 @@ export default async function handler(req, res) {
     return ok(res, {
       mockTest: {
         id:              mt.id,
+        documentId:      mt.document_id,
         title:           mt.title,
         subject:         mt.subject,
         durationMinutes: mt.duration_minutes,

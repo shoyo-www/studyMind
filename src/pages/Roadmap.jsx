@@ -11,7 +11,7 @@ const chipColors = {
   pending: 'bg-zinc-50 text-zinc-400 border-zinc-100',
 }
 
-function TopicItem({ topic, isLast, onPractice }) {
+function TopicItem({ topic, isLast, onPractice, onReview }) {
   const isDone = topic.status === 'done'
   const isCurrent = topic.status === 'current'
 
@@ -39,9 +39,14 @@ function TopicItem({ topic, isLast, onPractice }) {
               </div>
             </div>
             {isCurrent && (
-              <button onClick={onPractice} className="text-xs px-3.5 py-1.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors whitespace-nowrap shrink-0">
-                Practice →
-              </button>
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <button onClick={onReview} className="text-xs px-3.5 py-1.5 border border-violet-200 bg-violet-50 text-violet-700 rounded-lg hover:bg-violet-100 transition-colors whitespace-nowrap">
+                  Flashcards
+                </button>
+                <button onClick={onPractice} className="text-xs px-3.5 py-1.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors whitespace-nowrap">
+                  Practice →
+                </button>
+              </div>
             )}
           </div>
           <div className="flex flex-wrap gap-1.5 mt-2">
@@ -58,7 +63,14 @@ function TopicItem({ topic, isLast, onPractice }) {
 }
 
 export default function Roadmap({
-  onOpenSidebar, documents = [], activeDocument, setSelectedDocumentId, setScreen, refreshAppData }) {
+  onOpenSidebar,
+  documents = [],
+  activeDocument,
+  setSelectedDocumentId,
+  setScreen,
+  refreshAppData,
+  openStudyFocus,
+}) {
   const { t } = useT()
   const [generating, setGenerating] = useState(false)
   const [roadmapError, setRoadmapError] = useState('')
@@ -167,7 +179,18 @@ export default function Roadmap({
                 key={topic.id}
                 topic={topic}
                 isLast={index === topics.length - 1}
-                onPractice={() => setScreen('quiz')}
+                onPractice={() => openStudyFocus?.({
+                  documentId: activeDocument?.id,
+                  topic: topic.title,
+                  screen: 'quiz',
+                  origin: 'roadmap',
+                })}
+                onReview={() => openStudyFocus?.({
+                  documentId: activeDocument?.id,
+                  topic: topic.title,
+                  screen: 'flashcards',
+                  origin: 'roadmap',
+                })}
               />
             ))}
           </>

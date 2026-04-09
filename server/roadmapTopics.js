@@ -1,4 +1,4 @@
-import { normalizeExtractedText } from './_documentText.js'
+import { normalizeExtractedText } from './documentText.js'
 
 const MAX_TOPICS = 8
 

@@ -3,9 +3,9 @@
     { "source": "/api/(.*)", "destination": "/api/$1" }
   ],
   "functions": {
-    "api/mocktest/generate.js": { "memory": 1024, "maxDuration": 60 },
-    "api/mocktest/submit.js":   { "memory": 1024, "maxDuration": 60 },
-    "api/upload.js":            { "memory": 1024, "maxDuration": 60 },
-    "api/**/*.js":              { "memory": 512,  "maxDuration": 60 }
+    "api/mocktest/generate.js": { "maxDuration": 60 },
+    "api/mocktest/submit.js":   { "maxDuration": 60 },
+    "api/upload.js":            { "maxDuration": 60 },
+    "api/**/*.js":              { "maxDuration": 60 }
   }
 }

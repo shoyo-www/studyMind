@@ -14,6 +14,8 @@ function normalizeQuestions(questions = []) {
     return {
       q: question?.question || question?.front || 'Untitled question',
       opts: options,
+      topic: question?.topic || 'General',
+      difficulty: question?.difficulty || 'medium',
       correct: Number.isInteger(question?.correct)
         ? question.correct
         : question?.correct === true
@@ -37,8 +39,37 @@ function normalizeSavedAnswers(savedAnswers = [], totalQuestions = 0) {
   })
 }
 
+function getRecommendedReviewTopic(questions = [], answers = []) {
+  const wrongTopicCounts = new Map()
+
+  questions.forEach((question, index) => {
+    const answer = answers[index]
+    const topic = `${question?.topic || ''}`.trim()
+
+    if (!topic || topic === 'General' || answer === null || answer === undefined) {
+      return
+    }
+
+    if (answer !== question.correct) {
+      wrongTopicCounts.set(topic, (wrongTopicCounts.get(topic) || 0) + 1)
+    }
+  })
+
+  return [...wrongTopicCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || ''
+}
+
 export default function Quiz({
-  onOpenSidebar, documents, activeDocument, setSelectedDocumentId, refreshAppData }) {
+  onOpenSidebar,
+  documents,
+  activeDocument,
+  setSelectedDocumentId,
+  refreshAppData,
+  studyFocus,
+  openStudyFocus,
+  clearStudyFocus,
+  setScreen,
+}) {
   const { t } = useT()
   const [quiz, setQuiz] = useState(null)
   const [questions, setQuestions] = useState([])
@@ -51,14 +82,19 @@ export default function Quiz({
   const saveTimeoutRef = useRef(null)
 
   const activeDocumentId = activeDocument?.id || null
+  const focusedTopic = studyFocus?.documentId === activeDocumentId ? `${studyFocus?.topic || ''}`.trim() : ''
   const currentQuestion = questions[qIdx]
   const selected = answers[qIdx] ?? null
   const score = getScore(questions, answers)
+  const recommendedReviewTopic = getRecommendedReviewTopic(questions, answers) || focusedTopic
   const answeredCount = answers.filter((answer) => answer !== null && answer !== undefined).length
   const pct = questions.length ? Math.round(((qIdx + 1) / questions.length) * 100) : 0
   const activeDocumentIsPdf = activeDocument?.mime_type === 'application/pdf'
   const showLoader = loading || pending
-  const loaderSubtitle = pending ? `Preparing your ${QUIZ_QUESTION_COUNT}-question quiz` : 'Loading your quiz'
+  const focusLabel = focusedTopic ? `Focused on ${focusedTopic}` : ''
+  const loaderSubtitle = pending
+    ? `Preparing your ${focusLabel ? `${focusedTopic} ` : ''}${QUIZ_QUESTION_COUNT}-question quiz`.replace(/\s+/g, ' ').trim()
+    : 'Loading your quiz'
 
   function clearQuizState({ keepError = false } = {}) {
     setQuiz(null)
@@ -96,7 +132,7 @@ export default function Quiz({
     if (!documentId) return
 
     try {
-      const result = await quizApi.getLatest(documentId, { type: 'mcq', resumeOnly: true })
+      const result = await quizApi.getLatest(documentId, { type: 'mcq', topic: focusedTopic || undefined, resumeOnly: true })
       if (result?.quiz && (result?.questions?.length || result?.quiz?.questions?.length)) {
         applyReadyQuiz(result, { restoreProgress: true })
       }
@@ -115,7 +151,7 @@ export default function Quiz({
     }
 
     try {
-      const result = await quizApi.getLatest(documentId, { type: 'mcq' })
+      const result = await quizApi.getLatest(documentId, { type: 'mcq', topic: focusedTopic || undefined })
       const status = result?.status || result?.quiz?.status || 'missing'
 
       if (status === 'ready' && (result?.questions?.length || result?.quiz?.questions?.length)) {
@@ -166,6 +202,7 @@ export default function Quiz({
       const result = await quizApi.generate(activeDocument.id, {
         count: QUIZ_QUESTION_COUNT,
         type: 'mcq',
+        topic: focusedTopic || null,
       })
 
       if ((result?.status || result?.quiz?.status) === 'pending') {
@@ -242,7 +279,7 @@ export default function Quiz({
     }
 
     void loadSavedQuizProgress(activeDocumentId)
-  }, [activeDocumentId, activeDocument?.mime_type])
+  }, [activeDocumentId, activeDocument?.mime_type, focusedTopic])
 
   useEffect(() => {
     if (!pending || !activeDocumentId) return
@@ -282,7 +319,7 @@ export default function Quiz({
     <div className="relative flex flex-col flex-1 min-h-0">
       <TopBar
         title={activeDocument ? `${t('quiz.title')} — ${activeDocument.title}` : t('quiz.title')}
-        subtitle={activeDocument ? t('quiz.subtitle') : 'Select a document to generate a quiz.'}
+        subtitle={activeDocument ? (focusedTopic ? `${t('quiz.subtitle')} · Focus: ${focusedTopic}` : t('quiz.subtitle')) : 'Select a document to generate a quiz.'}
         action={(
           <button
             onClick={pending ? () => loadLatestQuiz(activeDocumentId) : generateQuiz}
@@ -294,12 +331,32 @@ export default function Quiz({
         )}
       />
       <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 sm:py-7 max-w-2xl w-full mx-auto">
+        {focusedTopic && (
+          <div className="mb-4 rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm text-violet-800">
+            <div className="font-semibold mb-1">Focused practice is on</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span>{focusedTopic}</span>
+              <button
+                onClick={clearStudyFocus}
+                className="text-xs px-2.5 py-1 rounded-full border border-violet-200 bg-white text-violet-600 hover:bg-violet-100 transition-colors"
+              >
+                Clear focus
+              </button>
+            </div>
+          </div>
+        )}
+
         {!!documents.length && (
           <div className="flex flex-wrap gap-2 mb-6">
             {documents.map((document) => (
               <button
                 key={document.id}
-                onClick={() => setSelectedDocumentId(document.id)}
+                onClick={() => {
+                  setSelectedDocumentId(document.id)
+                  if (document.id !== activeDocumentId) {
+                    clearStudyFocus?.()
+                  }
+                }}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${activeDocument?.id === document.id ? 'border-violet-200 bg-violet-50 text-violet-700' : 'border-zinc-200 bg-white text-zinc-500 hover:border-violet-200 hover:text-violet-600'}`}
               >
                 {document.title}
@@ -327,7 +384,7 @@ export default function Quiz({
             <div className="w-11 h-11 rounded-full border-4 border-violet-100 border-t-violet-500 animate-spin mx-auto mb-4" />
             <div className="text-base font-medium text-zinc-800 mb-2">Your quiz is being prepared</div>
             <p className="text-sm text-zinc-500 leading-relaxed mb-5">
-              We&apos;re generating your {QUIZ_QUESTION_COUNT}-question quiz now. This page will refresh automatically every few seconds.
+              We&apos;re generating your {focusedTopic ? `${focusedTopic} ` : ''}{QUIZ_QUESTION_COUNT}-question quiz now. This page will refresh automatically every few seconds.
             </p>
             <button
               onClick={() => loadLatestQuiz(activeDocumentId)}
@@ -347,7 +404,9 @@ export default function Quiz({
               </div>
               <div className="text-base font-medium text-zinc-800 mb-2">Ready for a fresh quiz?</div>
               <div className="mb-5">
-                Generate a fresh {QUIZ_QUESTION_COUNT}-question quiz from the selected document to start practising.
+                {focusedTopic
+                  ? `Generate a fresh ${QUIZ_QUESTION_COUNT}-question quiz on ${focusedTopic} from the selected document.`
+                  : `Generate a fresh ${QUIZ_QUESTION_COUNT}-question quiz from the selected document to start practising.`}
               </div>
               <button
                 onClick={generateQuiz}
@@ -369,6 +428,18 @@ export default function Quiz({
             <div className="w-full h-2 bg-zinc-100 rounded-full overflow-hidden mb-8">
               <div className={`h-full rounded-full transition-all duration-700 ${score / questions.length >= 0.7 ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${(score / questions.length) * 100}%` }} />
             </div>
+            <div className="mb-8 rounded-2xl border border-zinc-200 bg-white px-5 py-4 text-left">
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Next Best Step</div>
+              <div className="text-sm text-zinc-700 leading-relaxed">
+                {recommendedReviewTopic
+                  ? score / questions.length >= 0.7
+                    ? `Nice work. Lock in ${recommendedReviewTopic} with flashcards, then move to a full mock test.`
+                    : `Your weakest area in this round was ${recommendedReviewTopic}. Review it with flashcards, then retry a focused quiz.`
+                  : score / questions.length >= 0.7
+                    ? 'Nice work. You are ready to step up to a full mock test or move forward in the roadmap.'
+                    : 'Review the trickiest concepts with flashcards, then take another quiz to strengthen them.'}
+              </div>
+            </div>
             <div className="flex gap-3 justify-center">
               <button onClick={generateQuiz} className="px-5 py-2.5 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors">
                 {t('quiz.result.retake')}
@@ -382,6 +453,33 @@ export default function Quiz({
                 className="px-5 py-2.5 border border-zinc-200 text-zinc-600 text-sm rounded-lg hover:bg-zinc-50 transition-colors"
               >
                 Retry same quiz
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-3 justify-center mt-4">
+              {recommendedReviewTopic && (
+                <>
+                  <button
+                    onClick={() => openStudyFocus?.({ documentId: activeDocumentId, topic: recommendedReviewTopic, screen: 'flashcards', origin: 'quiz_result' })}
+                    className="px-5 py-2.5 border border-violet-200 bg-violet-50 text-violet-700 text-sm rounded-lg hover:bg-violet-100 transition-colors"
+                  >
+                    Review {recommendedReviewTopic}
+                  </button>
+                  <button
+                    onClick={() => openStudyFocus?.({ documentId: activeDocumentId, topic: recommendedReviewTopic, screen: 'quiz', origin: 'quiz_result' })}
+                    className="px-5 py-2.5 border border-zinc-200 text-zinc-600 text-sm rounded-lg hover:bg-zinc-50 transition-colors"
+                  >
+                    Retry quiz on {recommendedReviewTopic}
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => {
+                  clearStudyFocus?.()
+                  setScreen?.('mocktest')
+                }}
+                className="px-5 py-2.5 border border-zinc-200 text-zinc-600 text-sm rounded-lg hover:bg-zinc-50 transition-colors"
+              >
+                Take mock test
               </button>
             </div>
           </div>

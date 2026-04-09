@@ -6,13 +6,13 @@ import {
   ok,
   requireAuth,
   setCors,
-} from '../_helpers.js'
+} from '../../server/helpers.js'
 import {
   extractPdfText,
   isMissingDocumentTextColumnError,
   isSupabaseNoRowsError,
-} from '../_documentText.js'
-import { buildRoadmapTopicsFromText } from '../_roadmapTopics.js'
+} from '../../server/documentText.js'
+import { buildRoadmapTopicsFromText } from '../../server/roadmapTopics.js'
 
 export default async function handler(req, res) {
   setCors(req, res)

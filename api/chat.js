@@ -9,13 +9,13 @@ import {
   ok,
   requireAuth,
   setCors,
-} from './_helpers.js'
+} from '../server/helpers.js'
 import {
   extractPdfText,
   isMissingDocumentTextColumnError,
   isSupabaseNoRowsError,
-} from './_documentText.js'
-import { groqChatWithText, isGroqConfigured } from './_groq.js'
+} from '../server/documentText.js'
+import { groqChatWithText, isGroqConfigured } from '../server/groq.js'
 
 function getNextMidnightIso() {
   const d = new Date()
