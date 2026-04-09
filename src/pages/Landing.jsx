@@ -140,7 +140,7 @@ export default function Landing({ onGetStarted, onLogin }) {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 bg-violet-50 border border-violet-100 text-violet-700 text-xs font-medium px-4 py-1.5 rounded-full mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
-            Powered by Gemini AI · Now in Beta
+            Now in Beta
           </div>
 
           {/* Headline */}
