@@ -12,12 +12,13 @@ import Pricing   from './pages/Pricing'
 import Landing   from './pages/Landing'
 import Auth      from './pages/Auth'
 import MockTest  from './pages/MockTest'
+import Profile   from './pages/Profile'
 import AppLoader from './components/AppLoader'
 import ChatPanel from './components/ChatPanel'
 import BottomNav from './components/BottomNav'
 import { documentsApi, profileApi } from './lib/api'
 import { normalizeDocuments } from './lib/documents'
-import { supabase, isSupabaseConfigured, missingSupabaseEnvMessage } from './lib/supabase'
+import { auth, supabase, isSupabaseConfigured, missingSupabaseEnvMessage } from './lib/supabase'
 
 const PAGES = {
   dashboard: Dashboard,
@@ -29,9 +30,9 @@ const PAGES = {
   progress:  Progress,
   pricing:   Pricing,
   mocktest:  MockTest,
+  profile:   Profile,
 }
 
-// Simple error boundary for page crashes
 class PageErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null } }
   static getDerivedStateFromError(err) { return { hasError: true, error: err } }
@@ -89,6 +90,17 @@ export default function App() {
     setSidebarOpen(false)
   }
 
+  async function handleLogout() {
+    setAppLoading(true)
+    setAppError('')
+    try {
+      await auth.signOut()
+    } catch (error) {
+      setAppError(error.message || 'Failed to log out.')
+      setAppLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -117,7 +129,7 @@ export default function App() {
   const resolvedScreen = screen === 'pricing' ? 'dashboard' : screen
   const Page = PAGES[resolvedScreen] || Dashboard
   const activeDocument = documents.find(d => d.id === selectedDocumentId) || null
-  const pageProps = { user, profile: profileData?.profile, stats: profileData?.stats, documents, activeDocument, selectedDocumentId, setSelectedDocumentId, refreshAppData, appLoading, appError, openDocument, setScreen: navigate }
+  const pageProps = { user, profile: profileData?.profile, stats: profileData?.stats, documents, activeDocument, selectedDocumentId, setSelectedDocumentId, refreshAppData, appLoading, appError, openDocument, setScreen: navigate, onLogout: handleLogout }
 
   return (
     <div className="flex h-screen bg-zinc-50 overflow-hidden">
@@ -141,24 +153,25 @@ export default function App() {
           setScreen={navigate}
           user={user}
           profile={profileData?.profile}
+          onLogout={handleLogout}
           onClose={() => setSidebarOpen(false)}
         />
       </div>
 
       {/* ── Main ── */}
-      <main className="flex flex-col flex-1 min-w-0 overflow-hidden" style={{ paddingBottom: 'var(--bottom-nav-height, 0)' }}>
+      <main className="relative flex flex-col flex-1 min-w-0 overflow-hidden" style={{ paddingBottom: 'var(--bottom-nav-height, 0)' }}>
         <PageErrorBoundary>
           <Page
             {...pageProps}
             onOpenSidebar={() => setSidebarOpen(true)}
           />
         </PageErrorBoundary>
+        {appLoading && <AppLoader overlay subtitle="Refreshing your PrepPal workspace" />}
       </main>
 
       {/* ── Right AI Chat Panel ── */}
       <ChatPanel activeDocument={activeDocument} />
       <BottomNav screen={resolvedScreen} setScreen={navigate} />
-      {appLoading && <AppLoader fullScreen subtitle="Refreshing your PrepPal workspace" />}
       <Analytics />
     </div>
   )

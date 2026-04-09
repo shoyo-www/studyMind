@@ -50,6 +50,8 @@ create table if not exists public.quizzes (
   topic text,
   type text not null default 'mcq' check (type in ('mcq', 'truefalse', 'flashcard')),
   questions jsonb not null default '[]'::jsonb,
+  answers jsonb not null default '[]'::jsonb,
+  current_index integer not null default 0 check (current_index >= 0),
   score integer,
   attempted boolean not null default false,
   status text not null default 'ready' check (status in ('pending', 'ready', 'failed')),

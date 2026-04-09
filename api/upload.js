@@ -61,7 +61,7 @@ function getFallbackMetadata(file, mimeType = getUploadContentType(file)) {
 export default async function handler(req, res) {
   setCors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
-  if (req.method !== 'POST') return fail(res, { status: 405, message: 'Method not allowed' })
+  if (req.method !== 'POST') return fail(res, { status: 405, message: 'That upload action is not available here.' })
 
   let uploadedTempPath = ''
 
@@ -80,10 +80,10 @@ export default async function handler(req, res) {
     const file = getFirstUploadedFile(files)
 
     const validationError = validateUploadFile(file)
-    if (validationError === 'no_file') return fail(res, { status: 400, message: 'No file uploaded' })
-    if (validationError === 'empty_file') return fail(res, { status: 400, message: 'File is empty.' })
-    if (validationError === 'invalid_type') return fail(res, { status: 400, message: 'Only PDF and DOCX files are allowed' })
-    if (validationError === 'file_too_large') return fail(res, { status: 400, message: 'File is too large. Maximum size is 50MB.' })
+    if (validationError === 'no_file') return fail(res, { status: 400, message: 'Please choose a file to upload.' })
+    if (validationError === 'empty_file') return fail(res, { status: 400, message: 'That file looks empty. Please choose another one.' })
+    if (validationError === 'invalid_type') return fail(res, { status: 400, message: 'Please upload a PDF or DOCX file.' })
+    if (validationError === 'file_too_large') return fail(res, { status: 400, message: 'That file is too large. Please keep it under 50MB.' })
 
     uploadedTempPath = file.filepath
 
@@ -94,7 +94,7 @@ export default async function handler(req, res) {
     if ((profile?.uploads_this_month || 0) >= uploadLimit) {
       return fail(res, {
         status: 403,
-        message: `Upload limit reached. You have used ${profile.uploads_this_month}/${uploadLimit} uploads this month. Upgrade to Pro for unlimited uploads.`,
+        message: `You've used ${profile.uploads_this_month}/${uploadLimit} uploads this month. Upgrade to Pro for unlimited uploads.`,
       })
     }
 
@@ -162,8 +162,8 @@ export default async function handler(req, res) {
             },
           }), {
             label: 'Gemini upload analysis',
-            userMessage: 'AI document analysis is temporarily busy. Please try again in about a minute.',
-            quotaUserMessage: 'AI document analysis is temporarily unavailable because the Gemini API quota for this project has been exhausted.',
+            userMessage: 'Document analysis is a little busy right now. Please try again in about a minute.',
+            quotaUserMessage: 'Document analysis is temporarily unavailable right now. Please try again a little later.',
           })
 
           const parsed = JSON.parse(extractJsonFromText(result.text))

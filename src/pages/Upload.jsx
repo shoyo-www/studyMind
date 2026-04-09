@@ -118,7 +118,7 @@ export default function Upload({
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="relative flex flex-col flex-1 min-h-0">
       <TopBar onOpenSidebar={onOpenSidebar} title={t('upload.title')} subtitle={t('upload.subtitle')} />
       <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 sm:py-7 max-w-2xl w-full mx-auto">
         <input
@@ -163,7 +163,7 @@ export default function Upload({
             </div>
           )}
         </div>
-        {uploading && <AppLoader fullScreen subtitle={`Uploading your document${uploadProgress ? ` · ${uploadProgress}%` : ''}`} />}
+        {uploading && <AppLoader overlay subtitle={`Uploading your document${uploadProgress ? ` · ${uploadProgress}%` : ''}`} />}
 
         {error && (
           <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">

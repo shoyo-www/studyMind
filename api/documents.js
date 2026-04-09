@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'DELETE') {
       const { documentId } = req.body
-      if (!documentId) return fail(res, { status: 400, message: 'documentId is required' })
+      if (!documentId) return fail(res, { status: 400, message: 'Please choose a document first.' })
 
       const { data: doc, error: fetchError } = await supabase
         .from('documents')
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
         .single()
 
       if (fetchError || !doc) {
-        return fail(res, { status: 404, message: 'Document not found or access denied' })
+        return fail(res, { status: 404, message: 'We could not find that document. Please refresh and try again.' })
       }
       await supabase.storage.from('documents').remove([doc.storage_path])
       await supabase.from('messages').delete().eq('document_id', documentId)
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
       return ok(res, { deleted: true })
     }
 
-    return fail(res, { status: 405, message: 'Method not allowed' })
+    return fail(res, { status: 405, message: 'That action is not available here.' })
 
   } catch (err) {
     return fail(res, err)

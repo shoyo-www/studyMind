@@ -1,19 +1,17 @@
-// api/_groq.js
-// Groq API helper — NotebookLM-style document-aware AI
-// Free tier at console.groq.com — no credit card, works in India
-//
-// Models available free:
-//   llama-3.3-70b-versatile  — 6,000 req/day, best quality
-//   llama-3.1-8b-instant     — 14,400 req/day, faster fallback
-//   gemma2-9b-it             — 14,400 req/day, alternative
 
 const GROQ_API_URL      = 'https://api.groq.com/openai/v1/chat/completions'
 const DEFAULT_MODEL     = process.env.GROQ_MODEL          || 'llama-3.3-70b-versatile'
 const FALLBACK_MODEL    = process.env.GROQ_FALLBACK_MODEL  || 'llama-3.1-8b-instant'
+const DEFAULT_CHAT_MODEL = process.env.CHAT_GROQ_MODEL || 'qwen/qwen3-32b'
+const CHAT_FALLBACK_MODEL = process.env.CHAT_GROQ_FALLBACK_MODEL || FALLBACK_MODEL || DEFAULT_CHAT_MODEL
 const MAX_TOKENS        = 2048
 const TIMEOUT_MS        = 30_000
 
-const CHAT_DOC_CHAR_BUDGETS = [24_000, 16_000, 10_000]
+const CHAT_DOC_CHAR_BUDGETS = [12_000, 8_000, 5_000, 3_500]
+const CHAT_HISTORY_CHAR_BUDGETS = [1_800, 1_000, 400, 0]
+const CHAT_HISTORY_MESSAGE_LIMIT = 6
+const CHAT_HISTORY_MESSAGE_CHAR_LIMIT = 500
+const CHAT_MAX_TOKENS = 768
 const STUDY_SET_DOC_CHAR_BUDGETS = {
   mcq: [14_000, 10_000, 7_000],
   truefalse: [14_000, 10_000, 7_000],
@@ -62,11 +60,36 @@ function isGroqOversizedError(error) {
   )
 }
 
+function getFriendlyGroqErrorMessage(errorMessage = '', status = 500) {
+  const message = `${errorMessage || ''}`.toLowerCase()
+
+  if (
+    status === 429
+    && (
+      message.includes('request too large')
+      || message.includes('tokens per minute')
+      || message.includes('service tier')
+      || message.includes('requested')
+    )
+  ) {
+    return 'That question is a little too large for the AI right now. Please try a shorter question or wait a few seconds and try again.'
+  }
+
+  if (status === 429 || message.includes('rate limit')) {
+    return 'The AI is a little busy right now. Please wait a few seconds and try again.'
+  }
+
+  if (message.includes('billing') || message.includes('upgrade to dev tier')) {
+    return 'The AI is temporarily unavailable right now. Please try again shortly.'
+  }
+
+  return null
+}
+
 export function isGroqConfigured() {
   return Boolean(process.env.GROQ_API_KEY)
 }
 
-// ── Core fetch ──────────────────────────────────────────────────────
 async function groqFetch(messages, { model = DEFAULT_MODEL, temperature = 0.3, maxTokens = MAX_TOKENS } = {}) {
   if (!process.env.GROQ_API_KEY) {
     throw new Error('GROQ_API_KEY is not set in environment variables.')
@@ -94,10 +117,18 @@ async function groqFetch(messages, { model = DEFAULT_MODEL, temperature = 0.3, m
 
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}))
-      const msg     = errBody?.error?.message || `Groq API error ${res.status}`
-      const err     = new Error(msg)
+      const providerMessage = errBody?.error?.message || `Groq API error ${res.status}`
+      const friendlyMessage = getFriendlyGroqErrorMessage(providerMessage, res.status)
+      const err     = new Error(friendlyMessage || providerMessage)
       err.status    = res.status
       err.groqModel = model
+      err.providerMessage = providerMessage
+
+      const retryAfterMatch = `${providerMessage}`.match(/retry in about\s+(\d+)s/i)
+      if (retryAfterMatch) {
+        err.retryAfterSeconds = Number(retryAfterMatch[1]) || undefined
+      }
+
       throw err
     }
 
@@ -109,20 +140,20 @@ async function groqFetch(messages, { model = DEFAULT_MODEL, temperature = 0.3, m
   }
 }
 
-// Auto-retry with lighter model if rate limited
 export async function groqChat(messages, options = {}) {
+  const { model = DEFAULT_MODEL, fallbackModel = FALLBACK_MODEL, ...requestOptions } = options
+
   try {
-    return await groqFetch(messages, { ...options, model: DEFAULT_MODEL })
+    return await groqFetch(messages, { ...requestOptions, model })
   } catch (err) {
-    if (err.status === 429 && DEFAULT_MODEL !== FALLBACK_MODEL) {
-      console.warn(`[Groq] ${DEFAULT_MODEL} rate-limited → retrying with ${FALLBACK_MODEL}`)
-      return groqFetch(messages, { ...options, model: FALLBACK_MODEL })
+    if (err.status === 429 && model !== fallbackModel) {
+      console.warn(`[Groq] ${model} rate-limited → retrying with ${fallbackModel}`)
+      return groqFetch(messages, { ...requestOptions, model: fallbackModel })
     }
     throw err
   }
 }
 
-// ── JSON extractor ──────────────────────────────────────────────────
 export function extractJsonFromGroqText(rawText) {
   const cleaned = `${rawText || ''}`
     .trim()
@@ -144,25 +175,48 @@ export function extractJsonFromGroqText(rawText) {
   return cleaned
 }
 
-// ── Build history string for multi-turn memory ──────────────────────
-function buildHistoryText(history = []) {
-  return Array.isArray(history)
-    ? history.slice(-10)
-        .map(m => `${m?.role === 'user' ? 'Student' : 'Assistant'}: ${`${m?.text || ''}`.trim()}`)
-        .filter(Boolean)
-        .join('\n')
-    : ''
+export function stripReasoningBlocks(rawText = '') {
+  const text = `${rawText || ''}`
+  const withoutClosedThinkBlocks = text
+    .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, '')
+    .replace(/<thinking\b[^>]*>[\s\S]*?<\/thinking>/gi, '')
+
+  const withoutLeadingOpenThinkBlock = withoutClosedThinkBlocks
+    .replace(/^\s*<think\b[^>]*>[\s\S]*$/i, '')
+    .replace(/^\s*<thinking\b[^>]*>[\s\S]*$/i, '')
+
+  return withoutLeadingOpenThinkBlock.trim()
 }
 
-// ── Chat with document — NotebookLM style ───────────────────────────
-// The document text is embedded directly in the prompt so Groq can answer
-// accurately, just like NotebookLM does with its sources.
-export async function groqChatWithText({ documentTitle, documentText, message, history = [] }) {
+function buildHistoryText(history = [], maxChars = CHAT_HISTORY_CHAR_BUDGETS[0]) {
+  if (!Array.isArray(history) || maxChars <= 0) {
+    return ''
+  }
+
+  const historyText = history
+    .slice(-CHAT_HISTORY_MESSAGE_LIMIT)
+    .map((m) => {
+      const role = m?.role === 'user' ? 'Student' : 'Assistant'
+      const text = `${m?.text || ''}`.trim().slice(0, CHAT_HISTORY_MESSAGE_CHAR_LIMIT)
+      return text ? `${role}: ${text}` : ''
+    })
+    .filter(Boolean)
+    .join('\n')
+
+  return clampDocumentText(historyText, maxChars)
+}
+
+export async function groqChatWithText({
+  documentTitle,
+  documentText,
+  message,
+  history = [],
+  model = DEFAULT_CHAT_MODEL,
+  fallbackModel = CHAT_FALLBACK_MODEL,
+}) {
   const safeText = `${documentText || ''}`.trim()
   const historyText = buildHistoryText(history)
 
-  // ── System prompt ─────────────────────────────────────────────
-  // Explicit, strong instruction to ONLY use provided content
   const systemPrompt = `You are PrepPal AI, a focused study assistant working like NotebookLM.
 
 CRITICAL RULES:
@@ -180,8 +234,12 @@ CRITICAL RULES:
 
   let lastError = null
 
-  for (const maxChars of CHAT_DOC_CHAR_BUDGETS) {
+  for (const [index, maxChars] of CHAT_DOC_CHAR_BUDGETS.entries()) {
     const clampedText = clampDocumentText(safeText, maxChars)
+    const historyText = buildHistoryText(
+      history,
+      CHAT_HISTORY_CHAR_BUDGETS[Math.min(index, CHAT_HISTORY_CHAR_BUDGETS.length - 1)],
+    )
 
     if (!clampedText) {
       console.warn('[Groq Chat] Document text is empty — model will have no context')
@@ -201,9 +259,15 @@ CRITICAL RULES:
             `Student question: ${message.trim()}`,
           ].filter(Boolean).join('\n'),
         },
-      ], { temperature: 0.3, maxTokens: 1024 })
+      ], {
+        model,
+        fallbackModel,
+        temperature: 0.3,
+        maxTokens: CHAT_MAX_TOKENS,
+      })
 
-      return reply || 'I could not find an answer in your document. Please try rephrasing your question.'
+      const cleanedReply = stripReasoningBlocks(reply)
+      return cleanedReply || 'I could not find an answer in your document. Please try rephrasing your question.'
     } catch (error) {
       lastError = error
       if (!isGroqOversizedError(error) || maxChars === CHAT_DOC_CHAR_BUDGETS[CHAT_DOC_CHAR_BUDGETS.length - 1]) {
@@ -217,7 +281,6 @@ CRITICAL RULES:
   throw lastError || new Error('Groq chat failed. Please try again.')
 }
 
-// ── Quiz / Flashcard generation ──────────────────────────────────────
 export async function groqGenerateStudySet({ documentTitle, documentText, count, type = 'mcq', topic = null }) {
   const safeText = `${documentText || ''}`.trim()
 
@@ -245,7 +308,6 @@ export async function groqGenerateStudySet({ documentTitle, documentText, count,
       '[{"question":"clear statement to evaluate","correct":true,"explanation":"brief reason from document","topic":"subject"}]',
     ].join(' ')
   } else {
-    // MCQ
     formatInstruction = [
       `Generate exactly ${count} multiple-choice questions from the document text below.`,
       topicLine,

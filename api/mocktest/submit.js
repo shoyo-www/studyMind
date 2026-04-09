@@ -65,8 +65,8 @@ async function markQuestion(q, answer, num) {
     config:   { responseMimeType: 'application/json' },
   }), {
     label: `Mark Q${num}`,
-    userMessage: 'Auto-marking is temporarily busy. Please try again in about a minute.',
-    quotaUserMessage: 'Auto-marking is temporarily unavailable. Please try again later.',
+    userMessage: 'Auto-marking is a little busy right now. Please try again in about a minute.',
+    quotaUserMessage: 'Auto-marking is temporarily unavailable right now. Please try again shortly.',
   })
   const raw = result.text || ''
 
@@ -103,22 +103,22 @@ async function markQuestion(q, answer, num) {
 export default async function handler(req, res) {
   setCors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
-  if (req.method !== 'POST')    return fail(res, { status: 405, message: 'Method not allowed' })
+  if (req.method !== 'POST')    return fail(res, { status: 405, message: 'That action is not available here.' })
 
   try {
     const user = await requireAuth(req)
     checkRateLimit(`mocktest-sub:${user.id}:${getClientIp(req)}`, { limit: 10, windowMs: 60 * 60_000 })
 
     const { mockTestId, answers = [], timeTakenSecs = 0 } = req.body || {}
-    if (!mockTestId)     return fail(res, { status: 400, message: 'mockTestId is required' })
-    if (!answers.length) return fail(res, { status: 400, message: 'No answers provided' })
+    if (!mockTestId)     return fail(res, { status: 400, message: 'We could not find that mock test. Please refresh and try again.' })
+    if (!answers.length) return fail(res, { status: 400, message: 'Please answer at least one question before submitting.' })
 
     if (!process.env.GEMINI_API_KEY) {
-      return fail(res, createUnavailableError('Auto-marking is temporarily unavailable. Please try again later.'))
+      return fail(res, createUnavailableError('Auto-marking is not available right now. Please try again a little later.'))
     }
 
     if (shouldSkipGeminiDueToRecentQuota()) {
-      return fail(res, createUnavailableError('Auto-marking is temporarily unavailable. Please try again in about a minute.', 429, 60))
+      return fail(res, createUnavailableError('Auto-marking is taking a short break right now. Please try again in about a minute.', 429, 60))
     }
 
     const supabase = getAdminSupabase()
@@ -129,7 +129,7 @@ export default async function handler(req, res) {
       .select('id, title, subject, total_marks, duration_minutes, questions, user_id')
       .eq('id', mockTestId).eq('user_id', user.id).single()
 
-    if (testErr || !test) return fail(res, { status: 404, message: 'Mock test not found' })
+    if (testErr || !test) return fail(res, { status: 404, message: 'We could not find that mock test. Please refresh and try again.' })
 
     const questions   = Array.isArray(test.questions) ? test.questions : []
     const answerMap   = new Map(answers.map(a => [Number(a.questionIndex), `${a.answer || ''}`.trim()]))
@@ -147,8 +147,8 @@ export default async function handler(req, res) {
         if (isAiAvailabilityError(err)) {
           throw createUnavailableError(
             err?.status === 429
-              ? 'Auto-marking is temporarily unavailable. Please try again in about a minute.'
-              : 'Auto-marking is temporarily unavailable. Please try again later.',
+              ? 'Auto-marking is taking a short break right now. Please try again in about a minute.'
+              : 'Auto-marking is not available right now. Please try again a little later.',
             err?.status === 429 ? 429 : 503,
             err?.retryAfterSeconds || null,
           )

@@ -89,7 +89,7 @@ export default function Roadmap({
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="relative flex flex-col flex-1 min-h-0">
       <TopBar
         onOpenSidebar={onOpenSidebar}
         title={t('roadmap.title')}
@@ -173,7 +173,7 @@ export default function Roadmap({
           </>
         )}
       </div>
-      {generating && <AppLoader fullScreen subtitle="Preparing your roadmap from the PDF" />}
+      {generating && <AppLoader overlay subtitle="Preparing your roadmap from the PDF" />}
     </div>
   )
 }

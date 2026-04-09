@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import AppLoader from '../components/AppLoader'
+import GeneratingIndicator from '../components/GeneratingIndicator'
 import TopBar from '../components/TopBar'
 import { useT } from '../i18n'
+import { stripReasoningBlocks } from '../lib/chat'
 import { chatApi } from '../lib/api'
 
 export default function Chat({
@@ -31,7 +32,7 @@ export default function Chat({
 
     try {
       const data = await chatApi.send(activeDocument.id, val, messages.slice(-10))
-      setMessages(m => [...m, { role: 'assistant', text: data.reply, time: new Date() }])
+      setMessages(m => [...m, { role: 'assistant', text: stripReasoningBlocks(data.reply), time: new Date() }])
     } catch (e) {
       setError(e.message || 'Something went wrong. Please try again.')
       // Remove the optimistic user message on error
@@ -159,12 +160,17 @@ export default function Chat({
                       style={{ background: '#EEF2FF', color: '#6c63ff', border: '1px solid #E0E7FF' }}>
                       AI
                     </div>
-                    <div className="px-4 py-3 rounded-2xl flex gap-1 items-center"
+                    <div className="px-4 py-3 rounded-2xl"
                       style={{ background: '#fff', border: '1px solid #E4E4E7', borderBottomLeftRadius: 4 }}>
-                      {[0, 1, 2].map(i => (
-                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-zinc-300 animate-bounce"
-                          style={{ animationDelay: `${i * 0.15}s` }} />
-                      ))}
+                      <GeneratingIndicator
+                        compact
+                        label="Analysing PDF"
+                        steps={[
+                          'Scanning your notes',
+                          'Finding the right section',
+                          'Writing the answer',
+                        ]}
+                      />
                     </div>
                   </div>
                 )}
@@ -200,7 +206,6 @@ export default function Chat({
           )}
         </div>
       </div>
-      {loading && <AppLoader fullScreen subtitle="Finding the answer in your PDF" />}
     </div>
   )
 }

@@ -58,14 +58,14 @@ export function getUserSupabase(userToken) {
 export async function requireAuth(req) {
   const authHeader = req.headers.authorization || req.headers.Authorization
   if (!authHeader?.startsWith('Bearer ')) {
-    const err = new Error('Missing or invalid Authorization header')
+    const err = new Error('Please sign in to continue.')
     err.status = 401
     throw err
   }
 
   const token = authHeader.slice('Bearer '.length).trim()
   if (!token) {
-    const err = new Error('Missing bearer token')
+    const err = new Error('Please sign in to continue.')
     err.status = 401
     throw err
   }
@@ -77,7 +77,7 @@ export async function requireAuth(req) {
   } = await supabase.auth.getUser(token)
 
   if (error || !user) {
-    const err = new Error('Invalid or expired token')
+    const err = new Error('Your session has expired. Please sign in again.')
     err.status = 401
     throw err
   }
@@ -151,7 +151,7 @@ export function checkRateLimit(key, options = {}) {
 
   if (entry.count > limit) {
     const retryAfterSeconds = Math.max(1, Math.ceil((entry.resetAt - now) / 1000))
-    const err = new Error(`Rate limit exceeded. Try again in ${retryAfterSeconds}s`)
+    const err = new Error(`You're doing that a little too quickly. Please wait about ${retryAfterSeconds}s and try again.`)
     err.status = 429
     err.retryAfterSeconds = retryAfterSeconds
     throw err
@@ -198,6 +198,6 @@ export function setCors(req, res) {
     res.setHeader('Vary', 'Origin')
   }
 
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 }

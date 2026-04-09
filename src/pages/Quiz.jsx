@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import AppLoader from '../components/AppLoader'
 import TopBar from '../components/TopBar'
 import { useT } from '../i18n'
 import { quizApi } from '../lib/api'
 
 const LABELS = ['A', 'B', 'C', 'D']
-const QUIZ_LENGTH_OPTIONS = [10, 15, 20]
+const QUIZ_QUESTION_COUNT = 20
 
 function normalizeQuestions(questions = []) {
   return questions.map((question) => {
@@ -30,8 +30,15 @@ function getScore(questions, answers) {
   ), 0)
 }
 
+function normalizeSavedAnswers(savedAnswers = [], totalQuestions = 0) {
+  return Array.from({ length: totalQuestions }, (_, index) => {
+    const answer = savedAnswers[index]
+    return Number.isInteger(answer) && answer >= 0 ? answer : null
+  })
+}
+
 export default function Quiz({
-  onOpenSidebar, documents, activeDocument, setSelectedDocumentId }) {
+  onOpenSidebar, documents, activeDocument, setSelectedDocumentId, refreshAppData }) {
   const { t } = useT()
   const [quiz, setQuiz] = useState(null)
   const [questions, setQuestions] = useState([])
@@ -41,7 +48,7 @@ export default function Quiz({
   const [loading, setLoading] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
-  const [requestedCount, setRequestedCount] = useState(10)
+  const saveTimeoutRef = useRef(null)
 
   const activeDocumentId = activeDocument?.id || null
   const currentQuestion = questions[qIdx]
@@ -49,10 +56,9 @@ export default function Quiz({
   const score = getScore(questions, answers)
   const answeredCount = answers.filter((answer) => answer !== null && answer !== undefined).length
   const pct = questions.length ? Math.round(((qIdx + 1) / questions.length) * 100) : 0
-  const hasReadyQuiz = questions.length > 0 || done
   const activeDocumentIsPdf = activeDocument?.mime_type === 'application/pdf'
   const showLoader = loading || pending
-  const loaderSubtitle = pending ? 'Preparing your quiz from the selected PDF' : 'Loading your quiz'
+  const loaderSubtitle = pending ? `Preparing your ${QUIZ_QUESTION_COUNT}-question quiz` : 'Loading your quiz'
 
   function clearQuizState({ keepError = false } = {}) {
     setQuiz(null)
@@ -66,17 +72,37 @@ export default function Quiz({
     }
   }
 
-  function applyReadyQuiz(result) {
+  function applyReadyQuiz(result, options = {}) {
+    const { restoreProgress = false } = options
     const nextQuiz = result?.quiz || null
     const nextQuestions = normalizeQuestions(result?.questions || nextQuiz?.questions || [])
+    const nextAnswers = restoreProgress
+      ? normalizeSavedAnswers(nextQuiz?.answers || [], nextQuestions.length)
+      : Array(nextQuestions.length).fill(null)
+    const nextIndex = restoreProgress
+      ? Math.min(Math.max(0, Number(nextQuiz?.current_index) || 0), Math.max(nextQuestions.length - 1, 0))
+      : 0
 
     setQuiz(nextQuiz)
     setQuestions(nextQuestions)
-    setAnswers(Array(nextQuestions.length).fill(null))
-    setQIdx(0)
+    setAnswers(nextAnswers)
+    setQIdx(nextIndex)
     setDone(false)
     setPending(false)
     setError('')
+  }
+
+  async function loadSavedQuizProgress(documentId) {
+    if (!documentId) return
+
+    try {
+      const result = await quizApi.getLatest(documentId, { type: 'mcq', resumeOnly: true })
+      if (result?.quiz && (result?.questions?.length || result?.quiz?.questions?.length)) {
+        applyReadyQuiz(result, { restoreProgress: true })
+      }
+    } catch {
+      // Keep the quiz page usable even if resume lookup fails.
+    }
   }
 
   async function loadLatestQuiz(documentId, options = {}) {
@@ -138,7 +164,7 @@ export default function Quiz({
 
     try {
       const result = await quizApi.generate(activeDocument.id, {
-        count: requestedCount,
+        count: QUIZ_QUESTION_COUNT,
         type: 'mcq',
       })
 
@@ -173,13 +199,14 @@ export default function Quiz({
   async function next() {
     if (selected === null) return
 
-    if (qIdx + 1 >= questions.length) {
+      if (qIdx + 1 >= questions.length) {
       const finalScore = getScore(questions, answers)
       setDone(true)
 
       if (quiz?.id) {
         try {
-          await quizApi.saveScore(quiz.id, finalScore)
+          await quizApi.saveScore(quiz.id, finalScore, answers, qIdx)
+          await refreshAppData?.()
         } catch {
           // Keep the result view even if score persistence fails.
         }
@@ -214,7 +241,7 @@ export default function Quiz({
       return
     }
 
-    void loadLatestQuiz(activeDocumentId)
+    void loadSavedQuizProgress(activeDocumentId)
   }, [activeDocumentId, activeDocument?.mime_type])
 
   useEffect(() => {
@@ -227,8 +254,32 @@ export default function Quiz({
     return () => clearInterval(intervalId)
   }, [pending, activeDocumentId])
 
+  useEffect(() => () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!quiz?.id || pending || done || !questions.length) return
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      void quizApi.saveProgress(quiz.id, answers, qIdx).catch(() => {})
+    }, 400)
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [quiz?.id, answers, qIdx, done, pending, questions.length])
+
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="relative flex flex-col flex-1 min-h-0">
       <TopBar
         title={activeDocument ? `${t('quiz.title')} — ${activeDocument.title}` : t('quiz.title')}
         subtitle={activeDocument ? t('quiz.subtitle') : 'Select a document to generate a quiz.'}
@@ -238,7 +289,7 @@ export default function Quiz({
             disabled={!activeDocument || loading || (!activeDocumentIsPdf && !pending)}
             className="text-xs px-3.5 py-2 border border-zinc-200 rounded-lg text-zinc-500 hover:bg-zinc-50 transition-colors disabled:opacity-50"
           >
-            {pending ? 'Check status' : `Generate ${requestedCount}-question quiz`}
+            {pending ? 'Check status' : `Generate ${QUIZ_QUESTION_COUNT}-question quiz`}
           </button>
         )}
       />
@@ -257,32 +308,9 @@ export default function Quiz({
           </div>
         )}
 
-        {!!documents.length && activeDocumentIsPdf && (
-          <div className="mb-6">
-            <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300 mb-3">Quiz length</div>
-            <div className="flex flex-wrap gap-2">
-              {QUIZ_LENGTH_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  onClick={() => setRequestedCount(option)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${requestedCount === option ? 'border-violet-200 bg-violet-50 text-violet-700' : 'border-zinc-200 bg-white text-zinc-500 hover:border-violet-200 hover:text-violet-600'}`}
-                >
-                  {option} questions
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {error && (
           <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
-          </div>
-        )}
-
-        {quiz?.source === 'auto_upload' && quiz?.requested_count === 5 && !pending && !error && (
-          <div className="mb-4 rounded-xl border border-violet-100 bg-violet-50/70 px-4 py-3 text-sm text-violet-700">
-            A quick 5-question preview was prepared automatically after upload. Pick 10, 15, or 20 above if you want a longer practice set.
           </div>
         )}
 
@@ -299,7 +327,7 @@ export default function Quiz({
             <div className="w-11 h-11 rounded-full border-4 border-violet-100 border-t-violet-500 animate-spin mx-auto mb-4" />
             <div className="text-base font-medium text-zinc-800 mb-2">Your quiz is being prepared</div>
             <p className="text-sm text-zinc-500 leading-relaxed mb-5">
-              We started quiz generation right after upload. This page will refresh automatically every few seconds.
+              We&apos;re generating your {QUIZ_QUESTION_COUNT}-question quiz now. This page will refresh automatically every few seconds.
             </p>
             <button
               onClick={() => loadLatestQuiz(activeDocumentId)}
@@ -309,8 +337,26 @@ export default function Quiz({
             </button>
           </div>
         ) : !questions.length ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
-            Generate a quiz from the selected document to start practising.
+          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500 text-center">
+            <div className="max-w-md mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center mx-auto mb-4">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M4 3.5C4 2.67 4.67 2 5.5 2h9C15.33 2 16 2.67 16 3.5v13l-3-1.5L10 16.5 7 15 4 16.5v-13Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                  <path d="M7 7h6M7 10h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div className="text-base font-medium text-zinc-800 mb-2">Ready for a fresh quiz?</div>
+              <div className="mb-5">
+                Generate a fresh {QUIZ_QUESTION_COUNT}-question quiz from the selected document to start practising.
+              </div>
+              <button
+                onClick={generateQuiz}
+                disabled={loading || !activeDocumentIsPdf}
+                className="px-5 py-2.5 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50"
+              >
+                Generate {QUIZ_QUESTION_COUNT}-question quiz
+              </button>
+            </div>
           </div>
         ) : done ? (
           <div className="text-center py-16">
@@ -421,7 +467,7 @@ export default function Quiz({
           </>
         )}
       </div>
-      {showLoader && <AppLoader fullScreen subtitle={loaderSubtitle} />}
+      {showLoader && <AppLoader overlay subtitle={loaderSubtitle} />}
     </div>
   )
 }

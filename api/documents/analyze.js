@@ -17,7 +17,7 @@ import { buildRoadmapTopicsFromText } from '../_roadmapTopics.js'
 export default async function handler(req, res) {
   setCors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
-  if (req.method !== 'POST') return fail(res, { status: 405, message: 'Method not allowed' })
+  if (req.method !== 'POST') return fail(res, { status: 405, message: 'That roadmap action is not available here.' })
 
   try {
     const user = await requireAuth(req)
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
     const documentId = req.body?.documentId
     if (!documentId) {
-      return fail(res, { status: 400, message: 'documentId is required' })
+      return fail(res, { status: 400, message: 'Please choose a document first.' })
     }
 
     const supabase = getAdminSupabase()
@@ -52,11 +52,11 @@ export default async function handler(req, res) {
     }
 
     if (!document) {
-      return fail(res, { status: 404, message: 'Document not found or access denied' })
+      return fail(res, { status: 404, message: 'We could not find that document. Please refresh and try again.' })
     }
 
     if (document.mime_type !== 'application/pdf') {
-      return fail(res, { status: 400, message: 'Roadmaps are currently available for PDF documents only.' })
+      return fail(res, { status: 400, message: 'Roadmaps work with PDF documents right now. Please choose a PDF to continue.' })
     }
 
     let documentText = document.document_text || ''
@@ -77,7 +77,7 @@ export default async function handler(req, res) {
     const topics = buildRoadmapTopicsFromText(documentText)
 
     if (!topics.length) {
-      return fail(res, { status: 422, message: 'We could not prepare a roadmap for this document yet. Please try another PDF.' })
+      return fail(res, { status: 422, message: 'We could not build a roadmap from this document yet. Please try another PDF.' })
     }
 
     const updatePayload = {

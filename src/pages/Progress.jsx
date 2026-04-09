@@ -75,6 +75,24 @@ export default function Progress({
     },
   ]
 
+  const mockStatCards = [
+    {
+      label: 'Mock Tests Taken',
+      value: String(stats.mockTestsTaken || 0),
+      change: stats.mockTestsLast7Days ? `${stats.mockTestsLast7Days} in last 7 days` : 'No mock tests this week',
+    },
+    {
+      label: 'Mock Test Avg Score',
+      value: stats.mockTestsTaken ? formatPercentage(stats.mockAvgScore) : '—',
+      change: stats.mockBestGrade ? `Best grade: ${stats.mockBestGrade}` : 'Complete a mock test to see avg',
+    },
+    {
+      label: 'Best Mock Score',
+      value: stats.mockTestsTaken ? formatPercentage(stats.mockBestScore) : '—',
+      change: stats.mockTestsInProgress ? `${stats.mockTestsInProgress} test${stats.mockTestsInProgress > 1 ? 's' : ''} in progress` : 'No tests in progress',
+    },
+  ]
+
   function practiceTopic(topic) {
     if (topic?.documentId) {
       setSelectedDocumentId(topic.documentId)
@@ -83,7 +101,7 @@ export default function Progress({
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="relative flex flex-col flex-1 min-h-0">
       <TopBar
         title={t('progress.title')}
         subtitle={t('progress.subtitle')}
@@ -109,6 +127,23 @@ export default function Progress({
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
               {statCards.map((stat) => <StatCard key={stat.label} {...stat} />)}
             </div>
+
+            {/* Mock Test Stats */}
+            {stats.mockTestsTotal > 0 && (
+              <div className="mb-6 sm:mb-8">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">Mock Test Performance</div>
+                  {stats.mockTestsInProgress > 0 && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' }}>
+                      {stats.mockTestsInProgress} in progress
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                  {mockStatCards.map((stat) => <StatCard key={stat.label} {...stat} />)}
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-4 sm:mb-5">
               <div className="bg-white border border-zinc-100 rounded-xl p-5">
@@ -212,7 +247,7 @@ export default function Progress({
           </>
         )}
       </div>
-      {loading && <AppLoader fullScreen subtitle="Loading your progress dashboard" />}
+      {loading && <AppLoader overlay subtitle="Loading your progress dashboard" />}
     </div>
   )
 }

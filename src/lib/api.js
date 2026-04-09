@@ -14,11 +14,31 @@ import { supabase } from './supabase.js'
 
 async function getAuthHeaders() {
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session) throw new Error('Not logged in')
+  if (!session) throw new Error('Please sign in to continue.')
   return {
     'Content-Type':  'application/json',
     'Authorization': `Bearer ${session.access_token}`,
   }
+}
+
+function normaliseApiErrorMessage(message = '', status = 500) {
+  const safeMessage = `${message || ''}`.trim()
+  const lowerMessage = safeMessage.toLowerCase()
+
+  if (
+    lowerMessage.includes('request too large for model')
+    || lowerMessage.includes('tokens per minute')
+    || lowerMessage.includes('service tier')
+    || lowerMessage.includes('need more tokens?')
+  ) {
+    return 'That question is a little too large for the AI right now. Please try a shorter question or wait a few seconds and try again.'
+  }
+
+  if (status === 429 && lowerMessage.includes('groq')) {
+    return 'The AI is a little busy right now. Please wait a few seconds and try again.'
+  }
+
+  return safeMessage || 'Something went wrong'
 }
 
 // ── Base fetch with error handling ────────────────────────────────
@@ -28,7 +48,7 @@ async function apiFetch(path, options = {}) {
   const json    = await res.json().catch(() => null)
 
   if (!res.ok || !json?.success) {
-    const err = new Error(json?.error || 'Something went wrong')
+    const err = new Error(normaliseApiErrorMessage(json?.error, res.status))
     err.status = res.status
     const retryAfter = Number(res.headers.get('Retry-After'))
     if (Number.isFinite(retryAfter) && retryAfter > 0) {
@@ -47,6 +67,10 @@ function buildQuizQuery(documentId, options = {}) {
     params.set('type', options.type)
   }
 
+  if (options.resumeOnly) {
+    params.set('resumeOnly', '1')
+  }
+
   return `/quiz?${params.toString()}`
 }
 
@@ -61,7 +85,7 @@ export const documentsApi = {
   // Upload a PDF file
   upload: async (file, onProgress) => {
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session) throw new Error('Not logged in')
+    if (!session) throw new Error('Please sign in to continue.')
 
     const formData = new FormData()
     formData.append('file', file)
@@ -82,13 +106,13 @@ export const documentsApi = {
         try {
           const json = JSON.parse(xhr.responseText)
           if (xhr.status >= 200 && xhr.status < 300 && json?.success) resolve(json.data)
-          else reject(new Error(json?.error || 'Upload failed'))
+          else reject(new Error(json?.error || 'We could not upload that file. Please try again.'))
         } catch {
-          reject(new Error('Upload failed'))
+          reject(new Error('We could not upload that file. Please try again.'))
         }
       }
 
-      xhr.onerror = () => reject(new Error('Upload failed'))
+      xhr.onerror = () => reject(new Error('We could not upload that file. Please check your connection and try again.'))
       xhr.send(formData)
     })
   },
@@ -134,6 +158,12 @@ export const quizApi = {
   getLatest: (documentId, options = {}) =>
     apiFetch(buildQuizQuery(documentId, options)),
 
+  saveProgress: (quizId, answers, currentIndex) =>
+    apiFetch('/quiz/progress', {
+      method: 'POST',
+      body: JSON.stringify({ quizId, answers, currentIndex }),
+    }),
+
   // Start a background pre-generation request after upload
   preGenerate: (documentId, options = {}) =>
     apiFetch('/quiz', {
@@ -147,16 +177,22 @@ export const quizApi = {
     }),
 
   // Save quiz score
-  saveScore: (quizId, score) =>
+  saveScore: (quizId, score, answers = [], currentIndex = 0) =>
     apiFetch('/quiz/score', {
       method: 'POST',
-      body:   JSON.stringify({ quizId, score }),
+      body:   JSON.stringify({ quizId, score, answers, currentIndex }),
     }),
 }
 
 // ── User / Profile ─────────────────────────────────────────────────
 export const profileApi = {
   get: () => apiFetch('/profile'),
+
+  update: (payload) =>
+    apiFetch('/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
 
   // Upgrade to pro (triggers Razorpay payment)
   upgradeToPro: () =>
@@ -184,4 +220,5 @@ export const mockTestApi = {
       body:   JSON.stringify({ mockTestId, answers, timeTakenSecs }),
     }),
   list: () => apiFetch('/mocktest/list'),
+  get: (mockTestId) => apiFetch(`/mocktest/get?id=${encodeURIComponent(mockTestId)}`),
 }

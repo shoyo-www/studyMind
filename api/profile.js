@@ -14,11 +14,36 @@ function getTopicCount(document) {
 export default async function handler(req, res) {
   setCors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
-  if (req.method !== 'GET') return fail(res, { status: 405, message: 'Method not allowed' })
 
   try {
     const user = await requireAuth(req)
     const supabase = getAdminSupabase()
+
+    if (req.method === 'PATCH') {
+      await ensureProfile(supabase, user)
+      const fullName = typeof req.body?.fullName === 'string' ? req.body.fullName.trim() : ''
+
+      if (!fullName) {
+        return fail(res, { status: 400, message: 'Please enter your full name.' })
+      }
+
+      if (fullName.length > 80) {
+        return fail(res, { status: 400, message: 'Please keep your name under 80 characters.' })
+      }
+
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName })
+        .eq('id', user.id)
+        .select('id, email, full_name, avatar_url, plan, uploads_this_month, messages_today, messages_reset_at')
+        .single()
+
+      if (updateError) throw updateError
+
+      return ok(res, { profile: updatedProfile })
+    }
+
+    if (req.method !== 'GET') return fail(res, { status: 405, message: 'That action is not available here.' })
 
     const profile = await ensureProfile(supabase, user)
 

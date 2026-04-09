@@ -1,9 +1,13 @@
-export default function AppLoader({ subtitle = '', fullScreen = false }) {
+export default function AppLoader({ subtitle = '', fullScreen = false, overlay = false }) {
+  const containerClassName = fullScreen
+    ? 'fixed inset-0 z-[120] flex items-center justify-center bg-stone-50 px-6'
+    : overlay
+      ? 'absolute inset-0 z-20 flex items-center justify-center bg-stone-50/90 px-6 backdrop-blur-[1px]'
+      : 'flex items-center justify-center px-6 py-10'
+
   return (
     <div
-      className={fullScreen
-        ? 'fixed inset-0 z-[120] flex items-center justify-center bg-stone-50 px-6'
-        : 'flex items-center justify-center px-6 py-10'}
+      className={containerClassName}
       role="status"
       aria-live="polite"
     >

@@ -36,6 +36,8 @@ const QUIZ_COLUMNS = [
   'topic',
   'type',
   'questions',
+  'answers',
+  'current_index',
   'score',
   'attempted',
   'status',
@@ -57,7 +59,7 @@ const MAX_COUNT_BY_TYPE = {
   truefalse: 20,
   flashcard: 50,
 }
-const DEFAULT_FALLBACK_MODEL = 'gemini-2.0-flash'
+const DEFAULT_FALLBACK_MODEL = 'gemma-4-31b-it'
 
 function createUnavailableError(message, status = 503, retryAfterSeconds = null) {
   const error = new Error(message)
@@ -108,7 +110,7 @@ function getQuizGeminiClient() {
 
 function getQuizModelCandidates() {
   return [
-    process.env.QUIZ_GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+    process.env.QUIZ_GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemma-4-31b-it',
     process.env.QUIZ_GEMINI_FALLBACK_MODEL || DEFAULT_FALLBACK_MODEL,
   ].filter((modelName, index, list) => modelName && list.indexOf(modelName) === index)
 }
@@ -179,10 +181,16 @@ function serializeQuiz(quiz) {
   return {
     ...quiz,
     questions: Array.isArray(quiz.questions) ? quiz.questions : [],
+    answers: Array.isArray(quiz.answers) ? quiz.answers : [],
+    current_index: Math.max(0, Number(quiz.current_index) || 0),
     status: quiz.status || QUIZ_STATUS.ready,
     source: quiz.source || QUIZ_SOURCE.manual,
     requested_count: Number(quiz.requested_count || 0),
   }
+}
+
+function hasSavedQuizProgress(quiz) {
+  return Array.isArray(quiz?.answers) && quiz.answers.some((answer) => answer !== null && answer !== undefined)
 }
 
 function buildQuizResponse(quiz) {
@@ -227,6 +235,7 @@ async function loadLatestQuiz(supabase, userId, documentId, options = {}) {
   const {
     source = null,
     type = null,
+    resumeOnly = false,
   } = options
 
   let query = supabase
@@ -248,6 +257,13 @@ async function loadLatestQuiz(supabase, userId, documentId, options = {}) {
   const { data, error } = await query
 
   if (error) throw error
+  if (resumeOnly) {
+    return serializeQuiz((data || []).find((quiz) => (
+      quiz?.status === QUIZ_STATUS.ready
+      && !quiz?.attempted
+      && hasSavedQuizProgress(quiz)
+    )) || null)
+  }
   return serializeQuiz(chooseLatestQuiz(data || []))
 }
 
@@ -303,7 +319,7 @@ async function generateQuestionsWithGemini({ document, count, topic, type, pdfBu
       }), {
         label: `Gemini quiz generation (${modelName})`,
         userMessage: 'Quiz generation is temporarily busy due to AI demand. Please try again in about a minute.',
-        quotaUserMessage: 'Quiz generation is temporarily unavailable. Please try again later.',
+        quotaUserMessage: 'Quiz generation is temporarily unavailable right now. Please try again shortly.',
       })
 
       const parsed = JSON.parse(extractJsonFromText(result.text))
@@ -332,7 +348,7 @@ async function generateQuestionsWithGemini({ document, count, topic, type, pdfBu
     }
   }
 
-  throw lastError || new Error('Quiz generation failed')
+  throw lastError || new Error('We could not generate a quiz right now. Please try again.')
 }
 
 async function handleGet(req, res) {
@@ -340,15 +356,16 @@ async function handleGet(req, res) {
   const documentId = req.query?.documentId
   const requestedType = req.query?.type
   const type = ALLOWED_TYPES.has(requestedType) ? requestedType : null
+  const resumeOnly = req.query?.resumeOnly === '1'
 
   if (!documentId) {
-    return fail(res, { status: 400, message: 'documentId is required' })
+    return fail(res, { status: 400, message: 'Please choose a document first.' })
   }
 
   const supabase = getAdminSupabase()
   await fetchDocument(supabase, user.id, documentId)
 
-  const latestQuiz = await loadLatestQuiz(supabase, user.id, documentId, { type })
+  const latestQuiz = await loadLatestQuiz(supabase, user.id, documentId, { type, resumeOnly })
   return ok(res, buildQuizResponse(latestQuiz))
 }
 
@@ -370,7 +387,7 @@ async function handlePost(req, res) {
   const source = rawMode === QUIZ_SOURCE.autoUpload ? QUIZ_SOURCE.autoUpload : QUIZ_SOURCE.manual
 
   if (!documentId) {
-    return fail(res, { status: 400, message: 'documentId is required' })
+    return fail(res, { status: 400, message: 'Please choose a document first.' })
   }
 
   const supabase = getAdminSupabase()
@@ -379,7 +396,7 @@ async function handlePost(req, res) {
   if (document.mime_type !== 'application/pdf') {
     return fail(res, {
       status: 400,
-      message: 'AI quiz generation currently supports PDF documents only.',
+      message: 'Quiz generation works with PDF documents right now. Please choose a PDF to continue.',
     })
   }
 
@@ -399,6 +416,8 @@ async function handlePost(req, res) {
     topic: topic || 'General',
     type,
     questions: [],
+    answers: [],
+    current_index: 0,
     score: null,
     attempted: false,
     status: QUIZ_STATUS.pending,
@@ -414,9 +433,9 @@ async function handlePost(req, res) {
   const geminiApiKey = process.env.QUIZ_GEMINI_API_KEY || process.env.GEMINI_API_KEY
 
   if (!geminiApiKey) {
-    geminiError = createUnavailableError('Quiz generation is temporarily unavailable. Please try again later.')
+    geminiError = createUnavailableError('Quiz generation is not available right now. Please try again a little later.')
   } else if (shouldSkipGeminiDueToRecentQuota()) {
-    geminiError = createUnavailableError('Quiz generation is temporarily unavailable. Please try again in about a minute.', 429, 60)
+    geminiError = createUnavailableError('Quiz generation is taking a short break right now. Please try again in about a minute.', 429, 60)
     geminiError.geminiIssueType = 'quota'
     console.warn('[Quiz] Skipping generation while AI service cooldown is active.')
   } else {
@@ -453,7 +472,7 @@ async function handlePost(req, res) {
   try {
     await updateQuizRecord(supabase, quizShell.id, {
       status: QUIZ_STATUS.failed,
-      error_message: geminiError?.message || 'Quiz generation failed',
+      error_message: geminiError?.message || 'We could not generate a quiz right now. Please try again.',
       generation_completed_at: new Date().toISOString(),
     })
   } catch (updateError) {
@@ -476,7 +495,7 @@ export default async function handler(req, res) {
       return await handlePost(req, res)
     }
 
-    return fail(res, { status: 405, message: 'Method not allowed' })
+    return fail(res, { status: 405, message: 'That action is not available here.' })
   } catch (error) {
     return fail(res, error)
   }

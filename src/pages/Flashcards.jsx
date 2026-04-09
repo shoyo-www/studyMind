@@ -5,12 +5,6 @@ import { useT } from '../i18n'
 import { quizApi } from '../lib/api'
 
 const DEFAULT_FLASHCARD_COUNT = 50
-const TOPIC_COLORS = {
-  Biology:   { bg: '#ECFDF5', text: '#065F46', dot: '#22c55e' },
-  Physics:   { bg: '#EEF2FF', text: '#3730A3', dot: '#6c63ff' },
-  Chemistry: { bg: '#FFFBEB', text: '#92400E', dot: '#f59e0b' },
-  General:   { bg: '#F4F4F5', text: '#52525B', dot: '#a1a1aa' },
-}
 const DIFF_DOT = { easy: '#22c55e', medium: '#f59e0b', hard: '#ef4444' }
 
 function normalizeFlashcards(questions = []) {
@@ -25,11 +19,6 @@ function normalizeFlashcards(questions = []) {
     .filter((card) => card.front && card.back)
 }
 
-function buildFilteredDeck(cards, filter) {
-  if (filter === 'All') return [...cards]
-  return cards.filter((card) => card.topic === filter)
-}
-
 function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset }) {
   const [flipped, setFlipped] = useState(false)
   const [dragX, setDragX] = useState(0)
@@ -38,8 +27,6 @@ function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset }) {
   const [leaving, setLeaving] = useState(null)
   const startPos = useRef({ x: 0, y: 0 })
   const ref = useRef(null)
-
-  const tc = TOPIC_COLORS[card.topic] || TOPIC_COLORS.General
 
   function pointerDown(event) {
     if (!isTop) return
@@ -161,9 +148,7 @@ function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset }) {
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 20px' }}>
-            <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 10px', borderRadius: 20, background: tc.bg, color: tc.text }}>
-              {card.topic}
-            </span>
+            <span style={{ fontSize: 11, color: '#71717a' }}>{card.topic}</span>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: DIFF_DOT[card.difficulty] || '#a1a1aa' }} />
             <span style={{ fontSize: 11, color: '#a1a1aa' }}>{card.difficulty}</span>
           </div>
@@ -219,26 +204,23 @@ export default function Flashcards({ activeDocument, setScreen }) {
   const [known, setKnown] = useState([])
   const [skipped, setSkipped] = useState([])
   const [done, setDone] = useState(false)
-  const [filter, setFilter] = useState('All')
   const [loading, setLoading] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
 
   const activeDocumentId = activeDocument?.id || null
   const activeDocumentIsPdf = activeDocument?.mime_type === 'application/pdf'
-  const topics = ['All', ...new Set(allCards.map((card) => card.topic).filter(Boolean))]
-  const total = buildFilteredDeck(allCards, filter).length
+  const total = allCards.length
   const doneCount = known.length + skipped.length
   const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0
   const showLoader = loading || pending
   const loaderSubtitle = pending ? 'Preparing your flashcards from the selected PDF' : 'Loading your flashcards'
 
-  function resetRound(cards, nextFilter = filter) {
-    const nextDeck = buildFilteredDeck(cards, nextFilter)
-    setDeck(nextDeck)
+  function resetRound(cards) {
+    setDeck([...cards])
     setKnown([])
     setSkipped([])
-    setDone(nextDeck.length === 0)
+    setDone(cards.length === 0)
   }
 
   function clearFlashcardState({ keepError = false } = {}) {
@@ -249,7 +231,6 @@ export default function Flashcards({ activeDocument, setScreen }) {
     setSkipped([])
     setDone(false)
     setPending(false)
-    setFilter('All')
     if (!keepError) {
       setError('')
     }
@@ -261,7 +242,6 @@ export default function Flashcards({ activeDocument, setScreen }) {
 
     setQuiz(nextQuiz)
     setAllCards(nextCards)
-    setFilter('All')
     setDeck([...nextCards])
     setKnown([])
     setSkipped([])
@@ -372,16 +352,11 @@ export default function Flashcards({ activeDocument, setScreen }) {
   }
 
   function reviewSkipped() {
-    const nextCards = buildFilteredDeck(allCards, filter).filter((card) => skipped.includes(card.id))
+    const nextCards = allCards.filter((card) => skipped.includes(card.id))
     setDeck(nextCards)
     setKnown([])
     setSkipped([])
     setDone(nextCards.length === 0)
-  }
-
-  function changeFilter(nextFilter) {
-    setFilter(nextFilter)
-    resetRound(allCards, nextFilter)
   }
 
   useEffect(() => {
@@ -422,7 +397,7 @@ export default function Flashcards({ activeDocument, setScreen }) {
     : t('flashcards.subtitle')
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="relative flex flex-col flex-1 min-h-0">
       <TopBar
         title={t('flashcards.title')}
         subtitle={subtitle}
@@ -480,19 +455,6 @@ export default function Flashcards({ activeDocument, setScreen }) {
                   </div>
                 </div>
                 <span className="text-xs text-zinc-400">{deck.length} left</span>
-              </div>
-
-              <div className="flex gap-1.5 flex-wrap mb-3">
-                {topics.map((topic) => (
-                  <button
-                    key={topic}
-                    onClick={() => changeFilter(topic)}
-                    className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
-                    style={filter === topic ? { background: '#6c63ff', color: '#fff' } : { background: '#F4F4F5', color: '#71717A' }}
-                  >
-                    {topic}
-                  </button>
-                ))}
               </div>
 
               <div className="h-1.5 bg-zinc-200 rounded-full overflow-hidden">
@@ -648,7 +610,7 @@ export default function Flashcards({ activeDocument, setScreen }) {
           </>
         )}
       </div>
-      {showLoader && <AppLoader fullScreen subtitle={loaderSubtitle} />}
+      {showLoader && <AppLoader overlay subtitle={loaderSubtitle} />}
     </div>
   )
 }

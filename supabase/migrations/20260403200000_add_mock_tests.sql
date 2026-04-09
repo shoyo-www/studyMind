@@ -51,3 +51,7 @@ CREATE POLICY "mock_tests_delete"  ON public.mock_tests FOR DELETE USING (auth.u
 
 CREATE POLICY "mock_subs_select"   ON public.mock_test_submissions FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "mock_subs_insert"   ON public.mock_test_submissions FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Add grade column to submissions if not already present (safe to re-run)
+ALTER TABLE public.mock_test_submissions
+  ADD COLUMN IF NOT EXISTS grade text;

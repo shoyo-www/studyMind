@@ -1,6 +1,6 @@
 import { GoogleGenAI, createPartFromUri } from '@google/genai'
 
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemma-4-31b-it'
 const POLL_INTERVAL_MS = 1500
 const MAX_POLL_ATTEMPTS = 40
 const RETRYABLE_STATUS_CODES = new Set([429, 500, 503, 504])
@@ -200,8 +200,8 @@ export async function runGeminiTask(task, options = {}) {
   const {
     label = 'Gemini request',
     retryDelaysMs = DEFAULT_RETRY_DELAYS_MS,
-    userMessage = 'AI service is temporarily busy. Please try again in about a minute.',
-    quotaUserMessage = 'AI service is temporarily unavailable because the Gemini API quota for this project has been exhausted. Please try again later.',
+    userMessage = 'The AI is a little busy right now. Please try again in about a minute.',
+    quotaUserMessage = 'The AI is temporarily unavailable right now. Please try again a little later.',
   } = options
 
   let lastError

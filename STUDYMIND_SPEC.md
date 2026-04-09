@@ -19,7 +19,7 @@
 - Works with YOUR notes, not generic content
 - Native Hindi + English interface (bilingual)
 - Affordable at ₹199/month max — built for Indian students
-- Powered by Gemini 2.0 Flash (native PDF support, huge context window)
+- Powered by Gemma 4 31B Instruct (`gemma-4-31b-it`)
 
 ---
 
@@ -35,7 +35,7 @@
 | Database       | Supabase (PostgreSQL)             | Free tier, built-in auth, Row Level Security     |
 | Auth           | Supabase Auth (Google + Email)    | Simple OAuth, JWT tokens                         |
 | File Storage   | Supabase Storage                  | Secure, private bucket, signed URLs              |
-| AI Model       | Gemini 2.0 Flash                  | Native PDF support, cheapest, 1M token context   |
+| AI Model       | Gemma 4 31B Instruct              | Instruction-tuned hosted Google model            |
 | Payments       | Razorpay                          | India-first, supports UPI, cards, Net Banking    |
 | Email          | Resend                            | 3000 emails/month free                           |
 | Hosting        | Vercel                            | Free tier, auto-deploy from GitHub               |

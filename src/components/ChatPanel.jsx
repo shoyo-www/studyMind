@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { chatApi } from '../lib/api'
-import AppLoader from './AppLoader'
+import { stripReasoningBlocks } from '../lib/chat'
 import GeneratingIndicator from './GeneratingIndicator'
 
 const THREAD_CACHE = {}
@@ -126,7 +126,7 @@ export default function ChatPanel({ activeDocument = null }) {
         ...current,
         [activeDocument.id]: [
           ...optimisticMessages,
-          { role: 'assistant', text: result.reply, time: new Date() },
+          { role: 'assistant', text: stripReasoningBlocks(result.reply), time: new Date() },
         ],
       }))
     } catch (error) {
@@ -168,7 +168,6 @@ export default function ChatPanel({ activeDocument = null }) {
 
   return (
     <>
-      {currentLoading && <AppLoader fullScreen subtitle="Finding the answer in your PDF" />}
       {open && (
         <button
           type="button"

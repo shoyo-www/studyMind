@@ -3,19 +3,6 @@ import AppLoader from '../components/AppLoader'
 import TopBar from '../components/TopBar'
 import { mockTestApi } from '../lib/api'
 
-// ── Helpers ───────────────────────────────────────────────────────────
-const DURATION_OPTIONS = [
-  { label: '1 hr',     value: 60  },
-  { label: '1.5 hrs',  value: 90  },
-  { label: '2 hrs',    value: 120 },
-  { label: '2.5 hrs',  value: 150 },
-  { label: '3 hrs',    value: 180 },
-]
-const MARKS_OPTIONS = [
-  { label: '50 marks',  value: 50  },
-  { label: '75 marks',  value: 75  },
-  { label: '100 marks', value: 100 },
-]
 const TYPE_LABEL = {
   short_answer: 'Short Answer',
   long_answer:  'Long Answer',
@@ -29,12 +16,12 @@ const SECTION_STYLE = {
 }
 
 function fmtTime(s) {
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const sec = s % 60
-  const mm = String(m).padStart(2, '0')
-  const ss = String(sec).padStart(2, '0')
-  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
+  const h  = Math.floor(s / 3600)
+  const m  = Math.floor((s % 3600) / 60)
+  const sc = s % 60
+  return h > 0
+    ? `${h}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`
+    : `${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`
 }
 
 function fmtDuration(secs) {
@@ -43,46 +30,58 @@ function fmtDuration(secs) {
   return m > 0 ? (s > 0 ? `${m}m ${s}s` : `${m}m`) : `${s}s`
 }
 
-// ── Countdown timer hook ──────────────────────────────────────────────
+// ── Countdown timer ───────────────────────────────────────────────────
 function useCountdown(totalSecs, onExpire) {
-  const [left, setLeft]   = useState(totalSecs)
-  const expired           = useRef(false)
-
+  const [left, setLeft] = useState(totalSecs)
+  const expired         = useRef(false)
   useEffect(() => {
     if (left <= 0 && !expired.current) { expired.current = true; onExpire?.(); return }
     const id = setTimeout(() => setLeft(l => l - 1), 1000)
     return () => clearTimeout(id)
   }, [left])
-
   return { left, elapsed: totalSecs - left, formatted: fmtTime(left), isLow: left < 300 }
 }
 
 // ════════════════════════════════════════════════════════════════════
-// PHASE 1 — Setup
+// PHASE 1 — Setup (with past tests + resume)
 // ════════════════════════════════════════════════════════════════════
-function SetupPhase({ documents, onGenerate, loading, error }) {
-  const [docId,    setDocId]    = useState(documents[0]?.id || '')
-  const [duration, setDuration] = useState(180)
-  const [marks,    setMarks]    = useState(100)
+function SetupPhase({ documents, activeDocument, onGenerate, onResume, loading, error }) {
+  const [docId, setDocId] = useState(activeDocument?.mime_type === 'application/pdf' ? activeDocument.id : documents[0]?.id || '')
+  const [pastTests, setPastTests]   = useState([])
+  const [loadingList, setLoadingList] = useState(false)
 
-  const pdfs       = documents.filter(d => d.mime_type === 'application/pdf')
+  const pdfs        = documents.filter(d => d.mime_type === 'application/pdf')
   const selectedDoc = pdfs.find(d => d.id === docId)
 
+  useEffect(() => {
+    if (activeDocument?.mime_type === 'application/pdf') {
+      setDocId(activeDocument.id)
+      return
+    }
+
+    if (!pdfs.some((doc) => doc.id === docId)) {
+      setDocId(pdfs[0]?.id || '')
+    }
+  }, [activeDocument?.id, activeDocument?.mime_type, docId, pdfs])
+
+  // Load past tests
+  useEffect(() => {
+    async function load() {
+      setLoadingList(true)
+      try {
+        const data = await mockTestApi.list()
+        setPastTests(data.mockTests || [])
+      } catch {}
+      finally { setLoadingList(false) }
+    }
+    load()
+  }, [])
+
+  const existingTest = pastTests.find(t => t.documentId === docId) || null
+
   return (
-    <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-10">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-8">
       <div className="max-w-xl mx-auto">
-
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-3">📝</div>
-          <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: '#111110', marginBottom: 8 }}>
-            Mock Test Generator
-          </h2>
-          <p className="text-sm text-zinc-400 max-w-sm mx-auto leading-relaxed">
-            AI generates a full question paper from your notes. You write your answers, then AI marks each one and gives detailed feedback.
-          </p>
-        </div>
-
         {error && (
           <div className="mb-5 bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-xl">{error}</div>
         )}
@@ -95,7 +94,7 @@ function SetupPhase({ documents, onGenerate, loading, error }) {
         ) : (
           <div className="flex flex-col gap-4">
 
-            {/* Document */}
+            {/* Document selector */}
             <div className="bg-white border border-zinc-100 rounded-2xl p-5">
               <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-3">Select Document</div>
               <div className="flex flex-col gap-2">
@@ -116,45 +115,12 @@ function SetupPhase({ documents, onGenerate, loading, error }) {
               </div>
             </div>
 
-            {/* Duration */}
-            <div className="bg-white border border-zinc-100 rounded-2xl p-5">
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-3">Exam Duration</div>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                {DURATION_OPTIONS.map(o => (
-                  <button key={o.value} onClick={() => setDuration(o.value)}
-                    className="py-2.5 rounded-xl text-sm font-medium border transition-all"
-                    style={duration === o.value
-                      ? { background: '#6c63ff', color: '#fff', borderColor: '#6c63ff' }
-                      : { background: '#FAFAF9', color: '#71717A', borderColor: '#E4E4E7' }}>
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Marks */}
-            <div className="bg-white border border-zinc-100 rounded-2xl p-5">
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-3">Total Marks</div>
-              <div className="grid grid-cols-3 gap-2">
-                {MARKS_OPTIONS.map(o => (
-                  <button key={o.value} onClick={() => setMarks(o.value)}
-                    className="py-2.5 rounded-xl text-sm font-medium border transition-all"
-                    style={marks === o.value
-                      ? { background: '#6c63ff', color: '#fff', borderColor: '#6c63ff' }
-                      : { background: '#FAFAF9', color: '#71717A', borderColor: '#E4E4E7' }}>
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Summary */}
             {selectedDoc && (
               <div className="bg-violet-50 border border-violet-100 rounded-2xl px-5 py-4 flex flex-wrap gap-5 text-sm">
                 {[
-                  { k: 'Document',  v: selectedDoc.title },
-                  { k: 'Duration',  v: DURATION_OPTIONS.find(o => o.value === duration)?.label },
-                  { k: 'Marks',     v: `${marks} marks` },
+                  { k: 'Document', v: selectedDoc.title },
+                  { k: 'Duration', v: '3 hrs' },
+                  { k: 'Marks',    v: '100 marks' },
                 ].map(i => (
                   <div key={i.k}>
                     <div className="text-[10px] uppercase tracking-widest text-violet-400 font-medium mb-0.5">{i.k}</div>
@@ -164,12 +130,43 @@ function SetupPhase({ documents, onGenerate, loading, error }) {
               </div>
             )}
 
+            {existingTest && (
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
+                <div className="text-[10px] font-semibold uppercase tracking-widest text-amber-600 mb-3">Existing Mock Test</div>
+                <div className="flex items-center justify-between gap-3 bg-white border border-amber-100 rounded-xl px-4 py-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-zinc-800 truncate">{existingTest.title}</div>
+                    <div className="text-xs text-zinc-400">
+                      {existingTest.durationMinutes} min · {existingTest.totalMarks} marks · {existingTest.questionCount} questions
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onResume(existingTest.id)}
+                    className="text-xs px-3 py-2 rounded-lg font-semibold text-white shrink-0 transition-all hover:opacity-85"
+                    style={{ background: '#f59e0b' }}
+                  >
+                    {existingTest.attemptCount > 0 ? 'Open Test →' : 'Resume →'}
+                  </button>
+                </div>
+                <div className="mt-3 text-xs text-amber-700">
+                  Only one mock test is generated per uploaded PDF. We&apos;ll reopen the same test for this document instead of creating another one.
+                </div>
+              </div>
+            )}
+
             <button
-              onClick={() => onGenerate({ documentId: docId, durationMinutes: duration, totalMarks: marks })}
-              disabled={loading || !docId}
+              onClick={() => onGenerate({ documentId: docId })}
+              disabled={loading || !docId || Boolean(existingTest)}
               className="w-full py-4 rounded-2xl text-white font-semibold text-base transition-all disabled:opacity-50"
               style={{ background: loading ? '#A5B4FC' : '#6c63ff' }}>
-              🚀 Generate Question Paper
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" strokeDasharray="40" strokeLinecap="round"/>
+                  </svg>
+                  Generating question paper…
+                </span>
+              ) : existingTest ? 'Mock test already created for this PDF' : 'Generate Mock Test'}
             </button>
 
           </div>
@@ -180,10 +177,10 @@ function SetupPhase({ documents, onGenerate, loading, error }) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// PHASE 2 — Exam
+// PHASE 2 — Exam (with incomplete indicator)
 // ════════════════════════════════════════════════════════════════════
 function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
-  const [answers,     setAnswers]     = useState({})   // { questionIndex: 'text' }
+  const [answers,     setAnswers]     = useState({})
   const [activeQ,     setActiveQ]     = useState(0)
   const [showConfirm, setShowConfirm] = useState(false)
   const textareaRef = useRef(null)
@@ -195,9 +192,11 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
 
   useEffect(() => { textareaRef.current?.focus() }, [activeQ])
 
-  const answeredCount = Object.values(answers).filter(a => a?.trim()).length
-  const q = questions[activeQ]
-  const secStyle = SECTION_STYLE[q?.section] || { bg: '#F4F4F5', text: '#52525B', border: '#D4D4D8' }
+  const answeredCount   = Object.values(answers).filter(a => a?.trim()).length
+  const unansweredCount = questions.length - answeredCount
+  const q               = questions[activeQ]
+  const secStyle        = SECTION_STYLE[q?.section] || { bg: '#F4F4F5', text: '#52525B', border: '#D4D4D8' }
+  const sections        = [...new Set(questions.map(q => q.section || 'General'))]
 
   function handleSubmit() {
     const arr = questions.map((_, i) => ({ questionIndex: i, answer: answers[i] || '' }))
@@ -205,11 +204,8 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
     setShowConfirm(false)
   }
 
-  // Sections for nav
-  const sections = [...new Set(questions.map(q => q.section || 'General'))]
-
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="relative flex flex-col flex-1 min-h-0">
 
       {/* Timer + submit bar */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-2.5 border-b border-zinc-100 bg-white shrink-0 gap-4">
@@ -218,19 +214,33 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
           <span className="font-mono font-bold text-sm" style={{ color: isLow ? '#ef4444' : '#111110' }}>{formatted}</span>
           <span className="text-xs text-zinc-400 hidden sm:inline">remaining</span>
         </div>
+
+        {/* Answered progress bar */}
+        <div className="flex-1 hidden sm:flex items-center gap-2 max-w-xs">
+          <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all" style={{ width: `${(answeredCount / questions.length) * 100}%`, background: '#6c63ff' }} />
+          </div>
+          <span className="text-xs text-zinc-400 shrink-0">{answeredCount}/{questions.length}</span>
+        </div>
+
         <div className="flex items-center gap-3">
-          <span className="text-xs text-zinc-400">{answeredCount}/{questions.length} answered</span>
+          {/* Unanswered warning */}
+          {unansweredCount > 0 && (
+            <span className="text-xs text-amber-600 bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg hidden sm:block">
+              {unansweredCount} unanswered
+            </span>
+          )}
           <button onClick={() => setShowConfirm(true)} disabled={submitting}
             className="text-xs px-4 py-2 rounded-lg font-semibold text-white disabled:opacity-50 transition-all"
             style={{ background: '#111110' }}>
-            Submit Exam
+            {submitting ? 'Submitting…' : 'Submit Exam'}
           </button>
         </div>
       </div>
 
       <div className="flex flex-1 min-h-0">
 
-        {/* Sidebar nav — desktop */}
+        {/* Question nav sidebar */}
         <div className="hidden md:flex flex-col w-48 shrink-0 border-r border-zinc-100 overflow-y-auto py-3 bg-zinc-50/50">
           {sections.map(sec => (
             <div key={sec}>
@@ -245,8 +255,11 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
                       ? { borderColor: '#6c63ff', background: '#EEF2FF', color: '#3730A3', fontWeight: 600 }
                       : { borderColor: 'transparent', color: '#71717A' }}>
                     <div className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold shrink-0"
-                      style={{ background: done ? '#ECFDF5' : '#F4F4F5', color: done ? '#065F46' : '#A1A1AA' }}>
-                      {i + 1}
+                      style={done
+                        ? { background: '#ECFDF5', color: '#065F46' }
+                        : { background: '#FEF9EE', color: '#D97706', border: '1px solid #FDE68A' }
+                      }>
+                      {done ? '✓' : i + 1}
                     </div>
                     <span className="truncate flex-1">{TYPE_LABEL[qq.type]?.split(' ')[0]}</span>
                     <span className="shrink-0 text-[10px] text-zinc-400">{qq.marks}m</span>
@@ -255,9 +268,21 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
               })}
             </div>
           ))}
+
+          {/* Legend */}
+          <div className="px-4 pt-4 pb-2 border-t border-zinc-100 mt-2">
+            <div className="flex items-center gap-1.5 mb-1">
+              <div className="w-4 h-4 rounded text-[8px] flex items-center justify-center" style={{ background: '#ECFDF5', color: '#065F46' }}>✓</div>
+              <span className="text-[10px] text-zinc-400">Answered</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 h-4 rounded text-[8px] flex items-center justify-center" style={{ background: '#FEF9EE', color: '#D97706', border: '1px solid #FDE68A' }}>·</div>
+              <span className="text-[10px] text-zinc-400">Not answered</span>
+            </div>
+          </div>
         </div>
 
-        {/* Main question area */}
+        {/* Main area */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
           <div className="max-w-2xl mx-auto">
 
@@ -270,6 +295,11 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
               <span className="text-xs px-2.5 py-1 rounded-full bg-zinc-100 text-zinc-500 font-medium">
                 {TYPE_LABEL[q?.type] || 'Question'}
               </span>
+              {!answers[activeQ]?.trim() && (
+                <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: '#FEF9EE', color: '#D97706', border: '1px solid #FDE68A' }}>
+                  Not answered yet
+                </span>
+              )}
               <span className="text-xs px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 font-semibold ml-auto">
                 {q?.marks} {q?.marks === 1 ? 'mark' : 'marks'}
               </span>
@@ -297,7 +327,7 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
               <div className="mt-2 text-xs text-zinc-400">Expected: {q?.expectedLength || 'appropriate length'}</div>
             </div>
 
-            {/* Answer input */}
+            {/* Answer textarea */}
             <div className="mb-5">
               <div className="text-[10px] uppercase tracking-widest text-zinc-400 font-medium mb-2">Your Answer</div>
               <textarea
@@ -312,13 +342,16 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
                 }
                 rows={q?.type === 'long_answer' ? 12 : q?.type === 'numerical' ? 10 : 4}
                 className="w-full border border-zinc-200 rounded-xl px-4 py-3 text-sm text-zinc-800 outline-none resize-y leading-relaxed transition-colors"
-                style={{ minHeight: q?.type === 'long_answer' ? 240 : 100, fontFamily: 'DM Sans, sans-serif' }}
+                style={{ minHeight: q?.type === 'long_answer' ? 240 : 100 }}
                 onFocus={e  => e.target.style.borderColor = '#6c63ff'}
                 onBlur={e   => e.target.style.borderColor = '#E4E4E7'}
               />
               <div className="flex justify-between mt-1 text-xs text-zinc-400">
                 <span>{(answers[activeQ] || '').length} chars</span>
-                {answers[activeQ]?.trim() && <span className="text-emerald-500 font-medium">✓ Answered</span>}
+                {answers[activeQ]?.trim()
+                  ? <span className="text-emerald-500 font-medium">✓ Answered</span>
+                  : <span className="text-amber-500 font-medium">⚠ Not answered</span>
+                }
               </div>
             </div>
 
@@ -352,7 +385,7 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
                     ? { background: '#6c63ff', color: '#fff' }
                     : answers[i]?.trim()
                       ? { background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }
-                      : { background: '#F4F4F5', color: '#71717A', border: '1px solid #E4E4E7' }
+                      : { background: '#FEF9EE', color: '#D97706', border: '1px solid #FDE68A' }
                   }>{i + 1}</button>
               ))}
             </div>
@@ -361,20 +394,33 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
         </div>
       </div>
 
-      {/* Submit confirm modal */}
+      {/* Submit confirm */}
       {showConfirm && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-7 max-w-sm w-full">
             <div className="text-center mb-6">
-              <div className="text-3xl mb-3">{left <= 0 ? '⏰' : answeredCount === questions.length ? '✅' : '⚠️'}</div>
+              <div className="text-3xl mb-3">{left <= 0 ? '⏰' : unansweredCount === 0 ? '✅' : '⚠️'}</div>
               <div className="font-semibold text-zinc-900 text-lg mb-2" style={{ fontFamily: 'Syne, sans-serif' }}>
                 {left <= 0 ? 'Time is up!' : 'Submit your exam?'}
               </div>
               <p className="text-sm text-zinc-500">
                 {left <= 0
-                  ? 'Your time has expired. Answers will be submitted.'
-                  : `${answeredCount}/${questions.length} answered. ${questions.length - answeredCount} left blank.`}
+                  ? 'Time expired. Your answers will be submitted now.'
+                  : unansweredCount > 0
+                    ? `${unansweredCount} question${unansweredCount > 1 ? 's' : ''} not answered. Submit anyway?`
+                    : 'All questions answered. Ready to submit!'
+                }
               </p>
+              {unansweredCount > 0 && left > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5 justify-center">
+                  {questions.map((_, i) => !answers[i]?.trim() && (
+                    <span key={i} className="text-xs px-2 py-0.5 rounded-md font-medium"
+                      style={{ background: '#FEF9EE', color: '#D97706', border: '1px solid #FDE68A' }}>
+                      Q{i + 1}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex gap-3">
               {left > 0 && (
@@ -386,7 +432,7 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
               <button onClick={handleSubmit} disabled={submitting}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-all"
                 style={{ background: '#6c63ff' }}>
-                Submit now
+                {submitting ? 'Submitting…' : 'Submit now'}
               </button>
             </div>
           </div>
@@ -399,12 +445,11 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
 // ════════════════════════════════════════════════════════════════════
 // PHASE 3 — Results
 // ════════════════════════════════════════════════════════════════════
-function ResultsPhase({ result, onRetry, onNewTest }) {
+function ResultsPhase({ result, onRetry, onBack }) {
   const [tab,       setTab]       = useState('overview')
   const [expandedQ, setExpandedQ] = useState(null)
 
-  const scoreRingPct = Math.min(result.percentage, 100)
-  const ringCircum   = 2 * Math.PI * 42
+  const ringCircum = 2 * Math.PI * 42
 
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
@@ -413,26 +458,21 @@ function ResultsPhase({ result, onRetry, onNewTest }) {
         {/* Score card */}
         <div className="bg-white border border-zinc-100 rounded-2xl p-6 sm:p-8 mb-6">
           <div className="flex flex-col sm:flex-row items-center gap-6">
-
-            {/* SVG ring */}
             <div className="relative shrink-0" style={{ width: 110, height: 110 }}>
               <svg width="110" height="110" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
                 <circle cx="50" cy="50" r="42" fill="none" stroke="#E4E4E7" strokeWidth="9"/>
                 <circle cx="50" cy="50" r="42" fill="none"
                   stroke={result.gradeColor} strokeWidth="9" strokeLinecap="round"
                   strokeDasharray={ringCircum}
-                  strokeDashoffset={ringCircum * (1 - scoreRingPct / 100)}
+                  strokeDashoffset={ringCircum * (1 - Math.min(result.percentage, 100) / 100)}
                   style={{ transition: 'stroke-dashoffset 1s ease' }}
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <div className="font-bold text-xl" style={{ color: result.gradeColor, fontFamily: 'Syne, sans-serif' }}>
-                  {result.grade}
-                </div>
+                <div className="font-bold text-xl" style={{ color: result.gradeColor, fontFamily: 'Syne, sans-serif' }}>{result.grade}</div>
                 <div className="text-xs text-zinc-400">{result.percentage}%</div>
               </div>
             </div>
-
             <div className="flex-1 text-center sm:text-left">
               <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 32, fontWeight: 800, letterSpacing: '-0.03em', color: result.gradeColor }}>
                 {result.marksObtained}/{result.totalMarks}
@@ -440,13 +480,13 @@ function ResultsPhase({ result, onRetry, onNewTest }) {
               <div className="text-zinc-500 text-sm">{result.gradeLabel}</div>
               <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-zinc-100">
                 {[
-                  { k: 'Correct',    v: `${result.correctCount}/${result.questionsCount}` },
-                  { k: 'Time',       v: fmtDuration(result.timeTakenSecs)                 },
-                  { k: 'Subject',    v: result.subject || 'General'                       },
+                  { k: 'Correct',  v: `${result.correctCount}/${result.questionsCount}` },
+                  { k: 'Time',     v: fmtDuration(result.timeTakenSecs) },
+                  { k: 'Subject',  v: result.subject || 'General' },
                 ].map(s => (
                   <div key={s.k} className="text-center">
                     <div className="text-[10px] uppercase tracking-widest text-zinc-400 font-medium mb-0.5">{s.k}</div>
-                    <div className="text-xs font-semibold text-zinc-800">{s.v}</div>
+                    <div className="text-xs font-semibold text-zinc-800 truncate">{s.v}</div>
                   </div>
                 ))}
               </div>
@@ -466,8 +506,6 @@ function ResultsPhase({ result, onRetry, onNewTest }) {
 
         {tab === 'overview' && (
           <div className="flex flex-col gap-4">
-
-            {/* Section breakdown */}
             <div className="bg-white border border-zinc-100 rounded-2xl p-5">
               <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-4">Section Breakdown</div>
               <div className="flex flex-col gap-3">
@@ -485,9 +523,7 @@ function ResultsPhase({ result, onRetry, onNewTest }) {
                 ))}
               </div>
             </div>
-
-            {/* Weak topics */}
-            {result.weakTopics.length > 0 && (
+            {result.weakTopics?.length > 0 && (
               <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
                 <div className="text-[10px] font-semibold uppercase tracking-widest text-red-500 mb-3">📉 Needs Revision</div>
                 <div className="flex flex-wrap gap-2">
@@ -499,9 +535,7 @@ function ResultsPhase({ result, onRetry, onNewTest }) {
                 </div>
               </div>
             )}
-
-            {/* Strong topics */}
-            {result.strongTopics.length > 0 && (
+            {result.strongTopics?.length > 0 && (
               <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5">
                 <div className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600 mb-3">💪 Strong Topics</div>
                 <div className="flex flex-wrap gap-2">
@@ -527,12 +561,18 @@ function ResultsPhase({ result, onRetry, onNewTest }) {
                       ? { background: '#ECFDF5', color: '#065F46' }
                       : a.marksAwarded > 0
                         ? { background: '#FFFBEB', color: '#92400E' }
-                        : { background: '#FEF2F2', color: '#991B1B' }}>
-                    {a.marksAwarded > 0 ? '✓' : '✗'}
+                        : a.studentAnswer?.trim()
+                          ? { background: '#FEF2F2', color: '#991B1B' }
+                          : { background: '#F4F4F5', color: '#71717A' }
+                    }>
+                    {a.marksAwarded > 0 ? '✓' : a.studentAnswer?.trim() ? '✗' : '—'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-zinc-800 truncate">Q{a.questionNumber}. {a.question}</div>
-                    <div className="text-xs text-zinc-400 mt-0.5">{a.section} · {a.topic}</div>
+                    <div className="text-xs text-zinc-400 mt-0.5">
+                      {a.section} · {a.topic}
+                      {!a.studentAnswer?.trim() && <span className="ml-2 text-amber-500 font-medium">· Not answered</span>}
+                    </div>
                   </div>
                   <div className="shrink-0 text-right ml-2">
                     <div className="text-sm font-bold"
@@ -545,37 +585,29 @@ function ResultsPhase({ result, onRetry, onNewTest }) {
 
                 {expandedQ === i && (
                   <div className="px-5 pb-5 border-t border-zinc-100 pt-4 flex flex-col gap-4">
-                    {/* Student answer */}
                     <div>
                       <div className="text-[10px] uppercase tracking-widest text-zinc-400 font-medium mb-2">Your Answer</div>
                       <div className="text-sm text-zinc-700 bg-zinc-50 rounded-xl p-3 leading-relaxed whitespace-pre-wrap">
-                        {a.studentAnswer || <span className="italic text-zinc-400">No answer provided</span>}
+                        {a.studentAnswer?.trim() || <span className="italic text-zinc-400">No answer provided — 0 marks awarded</span>}
                       </div>
                     </div>
-                    {/* AI feedback */}
                     <div>
                       <div className="text-[10px] uppercase tracking-widest text-zinc-400 font-medium mb-2">AI Feedback</div>
                       <div className="text-sm text-zinc-700 leading-relaxed">{a.feedback}</div>
                     </div>
-                    {/* Points covered */}
-                    {a.keyPointsCovered.length > 0 && (
+                    {a.keyPointsCovered?.length > 0 && (
                       <div>
                         <div className="text-[10px] uppercase tracking-widest text-emerald-600 font-medium mb-2">✓ Points Covered</div>
                         <ul className="flex flex-col gap-1">
-                          {a.keyPointsCovered.map((pt, j) => (
-                            <li key={j} className="text-xs text-emerald-700 flex gap-2"><span>•</span><span>{pt}</span></li>
-                          ))}
+                          {a.keyPointsCovered.map((pt, j) => <li key={j} className="text-xs text-emerald-700 flex gap-2"><span>•</span><span>{pt}</span></li>)}
                         </ul>
                       </div>
                     )}
-                    {/* Points missed */}
-                    {a.keyPointsMissed.length > 0 && (
+                    {a.keyPointsMissed?.length > 0 && (
                       <div>
                         <div className="text-[10px] uppercase tracking-widest text-red-500 font-medium mb-2">✗ Points Missed</div>
                         <ul className="flex flex-col gap-1">
-                          {a.keyPointsMissed.map((pt, j) => (
-                            <li key={j} className="text-xs text-red-600 flex gap-2"><span>•</span><span>{pt}</span></li>
-                          ))}
+                          {a.keyPointsMissed.map((pt, j) => <li key={j} className="text-xs text-red-600 flex gap-2"><span>•</span><span>{pt}</span></li>)}
                         </ul>
                       </div>
                     )}
@@ -586,16 +618,15 @@ function ResultsPhase({ result, onRetry, onNewTest }) {
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex gap-3 mt-6">
           <button onClick={onRetry}
             className="flex-1 py-3 rounded-xl text-sm font-semibold text-white transition-all"
             style={{ background: '#6c63ff' }}>
             Retake Test
           </button>
-          <button onClick={onNewTest}
+          <button onClick={onBack}
             className="flex-1 py-3 rounded-xl text-sm font-medium border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-all">
-            New Test
+            Back to Mock Test
           </button>
         </div>
 
@@ -607,7 +638,7 @@ function ResultsPhase({ result, onRetry, onNewTest }) {
 // ════════════════════════════════════════════════════════════════════
 // Main component
 // ════════════════════════════════════════════════════════════════════
-export default function MockTest({ onOpenSidebar, documents = [] }) {
+export default function MockTest({ onOpenSidebar, documents = [], activeDocument = null }) {
   const [phase,      setPhase]      = useState('setup')
   const [mockTest,   setMockTest]   = useState(null)
   const [questions,  setQuestions]  = useState([])
@@ -616,18 +647,32 @@ export default function MockTest({ onOpenSidebar, documents = [] }) {
   const [submitting, setSubmitting] = useState(false)
   const [error,      setError]      = useState('')
 
+  function startExam(data) {
+    setMockTest(data.mockTest)
+    setQuestions(data.questions)
+    setPhase('exam')
+  }
+
   async function handleGenerate(opts) {
     setGenerating(true); setError('')
     try {
-      const data = await mockTestApi.generate(opts.documentId, {
-        durationMinutes: opts.durationMinutes,
-        totalMarks:      opts.totalMarks,
-      })
-      setMockTest(data.mockTest)
-      setQuestions(data.questions)
-      setPhase('exam')
+      const data = await mockTestApi.generate(opts.documentId)
+      startExam(data)
     } catch (e) {
       setError(e.message || 'Failed to generate question paper. Please try again.')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  async function handleResume(mockTestId) {
+    setGenerating(true); setError('')
+    try {
+      // Fetch the existing test's questions
+      const data = await mockTestApi.get(mockTestId)
+      startExam(data)
+    } catch (e) {
+      setError(e.message || 'Failed to load test. Please try again.')
     } finally {
       setGenerating(false)
     }
@@ -652,7 +697,7 @@ export default function MockTest({ onOpenSidebar, documents = [] }) {
     results: 'Results',
   }
   const SUBTITLES = {
-    setup:   'AI-generated full question papers with written answers',
+    setup:   'Generate one mock test for any uploaded PDF and reuse the same paper whenever you return.',
     exam:    `${questions.length} questions · ${mockTest?.totalMarks} marks · ${mockTest?.durationMinutes} min`,
     results: result ? `${result.marksObtained}/${result.totalMarks} · Grade ${result.grade}` : '',
   }
@@ -668,7 +713,14 @@ export default function MockTest({ onOpenSidebar, documents = [] }) {
       )}
 
       {phase === 'setup' && (
-        <SetupPhase documents={documents} onGenerate={handleGenerate} loading={generating} error={error} />
+        <SetupPhase
+          documents={documents}
+          activeDocument={activeDocument}
+          onGenerate={handleGenerate}
+          onResume={handleResume}
+          loading={generating}
+          error={error}
+        />
       )}
       {phase === 'exam' && mockTest && (
         <ExamPhase mockTest={mockTest} questions={questions} onSubmit={handleSubmit} submitting={submitting} />
@@ -677,13 +729,13 @@ export default function MockTest({ onOpenSidebar, documents = [] }) {
         <ResultsPhase
           result={result}
           onRetry={() => { setPhase('exam'); setResult(null) }}
-          onNewTest={() => { setPhase('setup'); setMockTest(null); setQuestions([]); setResult(null); setError('') }}
+          onBack={() => { setPhase('setup'); setMockTest(null); setQuestions([]); setResult(null); setError('') }}
         />
       )}
       {(generating || submitting) && (
         <AppLoader
-          fullScreen
-          subtitle={generating ? 'Generating your mock test from the selected PDF' : 'Submitting your answers for evaluation'}
+          overlay
+          subtitle={generating ? 'Loading your question paper…' : 'AI is marking your answers…'}
         />
       )}
     </div>

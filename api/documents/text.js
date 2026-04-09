@@ -13,14 +13,14 @@ import {
 export default async function handler(req, res) {
   setCors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
-  if (req.method !== 'GET') return fail(res, { status: 405, message: 'Method not allowed' })
+  if (req.method !== 'GET') return fail(res, { status: 405, message: 'That action is not available here.' })
 
   try {
     const user = await requireAuth(req)
     const documentId = req.query?.documentId
 
     if (!documentId) {
-      return fail(res, { status: 400, message: 'documentId is required' })
+      return fail(res, { status: 400, message: 'Please choose a document first.' })
     }
 
     const supabase = getAdminSupabase()
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     }
 
     if (!document) {
-      return fail(res, { status: 404, message: 'Document not found or access denied' })
+      return fail(res, { status: 404, message: 'We could not find that document. Please refresh and try again.' })
     }
 
     let documentText = document.document_text || ''

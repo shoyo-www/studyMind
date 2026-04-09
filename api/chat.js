@@ -8,17 +8,14 @@ import {
   getClientIp,
   ok,
   requireAuth,
-  sanitizeFileName,
   setCors,
 } from './_helpers.js'
 import {
-  getGeminiClient,
-  getGeminiModelName,
-  makeGeminiFilePart,
-  runGeminiTask,
-  shouldSkipGeminiDueToRecentQuota,
-  uploadPdfToGemini,
-} from './_gemini.js'
+  extractPdfText,
+  isMissingDocumentTextColumnError,
+  isSupabaseNoRowsError,
+} from './_documentText.js'
+import { groqChatWithText, isGroqConfigured } from './_groq.js'
 
 function getNextMidnightIso() {
   const d = new Date()
@@ -35,19 +32,45 @@ function createUnavailableError(message, status = 503, retryAfterSeconds = null)
   return error
 }
 
+async function loadChatDocument({ supabase, userId, documentId }) {
+  let canPersistDocumentText = true
+  let { data: doc, error } = await supabase
+    .from('documents')
+    .select('id, title, storage_path, user_id, mime_type, document_text')
+    .eq('id', documentId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error && isMissingDocumentTextColumnError(error)) {
+    canPersistDocumentText = false
+    ;({ data: doc, error } = await supabase
+      .from('documents')
+      .select('id, title, storage_path, user_id, mime_type')
+      .eq('id', documentId)
+      .eq('user_id', userId)
+      .maybeSingle())
+  }
+
+  if (error && !isSupabaseNoRowsError(error)) {
+    throw error
+  }
+
+  return { doc, canPersistDocumentText }
+}
+
 export default async function handler(req, res) {
   setCors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
-  if (req.method !== 'POST')    return fail(res, { status: 405, message: 'Method not allowed' })
+  if (req.method !== 'POST')    return fail(res, { status: 405, message: 'That action is not available here.' })
 
   try {
     const user = await requireAuth(req)
     checkRateLimit(`chat:${user.id}:${getClientIp(req)}`, { limit: 50, windowMs: 60_000 })
 
     const { documentId, message, history = [] } = req.body || {}
-    if (!documentId)           return fail(res, { status: 400, message: 'documentId is required' })
-    if (!message?.trim())      return fail(res, { status: 400, message: 'message is required' })
-    if (message.length > 2000) return fail(res, { status: 400, message: 'Message too long (max 2000 chars)' })
+    if (!documentId)           return fail(res, { status: 400, message: 'Please choose a document before starting the chat.' })
+    if (!message?.trim())      return fail(res, { status: 400, message: 'Please type a message first.' })
+    if (message.length > 2000) return fail(res, { status: 400, message: 'That message is a bit too long. Please keep it under 2000 characters.' })
 
     const supabase = getAdminSupabase()
     const profile  = await ensureProfile(supabase, user)
@@ -68,73 +91,67 @@ export default async function handler(req, res) {
     if (messagesToday >= dailyLimit) {
       return fail(res, {
         status: 429,
-        message: `Daily message limit reached (${dailyLimit}/day). ${profile?.plan === 'pro' ? 'Limit resets at midnight.' : 'Upgrade to Pro for 200 messages/day.'}`,
+        message: `You've reached your daily chat limit (${dailyLimit} messages today). ${profile?.plan === 'pro' ? 'It resets at midnight.' : 'Upgrade to Pro to unlock 200 messages per day.'}`,
       })
     }
 
     // ── Fetch document ───────────────────────────────────────────
-    const { data: doc, error: docErr } = await supabase
-      .from('documents')
-      .select('id, title, storage_path, user_id, mime_type')
-      .eq('id', documentId)
-      .eq('user_id', user.id)
-      .single()
-
-    if (docErr || !doc) return fail(res, { status: 404, message: 'Document not found or access denied' })
-    if (doc.mime_type !== 'application/pdf') return fail(res, { status: 400, message: 'AI chat supports PDF documents only.' })
-
-    let reply = ''
-    const geminiApiKey = process.env.GEMINI_API_KEY
-    if (!geminiApiKey) {
-      throw createUnavailableError('AI is temporarily unavailable. Please try again later.')
-    }
-
-    if (shouldSkipGeminiDueToRecentQuota()) {
-      throw createUnavailableError('AI is temporarily unavailable. Please try again in about a minute.', 429, 60)
-    }
-
-    const { data: fileData, error: fileErr } = await supabase.storage
-      .from('documents').download(doc.storage_path)
-    if (fileErr) throw fileErr
-
-    const pdfBuffer = Buffer.from(await fileData.arrayBuffer())
-    const ai = getGeminiClient(geminiApiKey)
-    const geminiFile = await uploadPdfToGemini(ai, {
-      buffer: pdfBuffer,
-      displayName: sanitizeFileName(doc.title || 'notes.pdf'),
+    const { doc, canPersistDocumentText } = await loadChatDocument({
+      supabase,
+      userId: user.id,
+      documentId,
     })
+
+    if (!doc) return fail(res, { status: 404, message: 'We could not find that document. Please refresh and try again.' })
+    if (doc.mime_type !== 'application/pdf') return fail(res, { status: 400, message: 'Chat works with PDF documents right now. Please choose a PDF to continue.' })
+
+    if (!isGroqConfigured()) {
+      throw createUnavailableError('Chat is not available right now. Please try again a little later.')
+    }
+
+    let documentText = doc.document_text || ''
+    if (!documentText.trim()) {
+      const { data: fileData, error: fileErr } = await supabase.storage
+        .from('documents')
+        .download(doc.storage_path)
+
+      if (fileErr) throw fileErr
+
+      const pdfBuffer = Buffer.from(await fileData.arrayBuffer())
+      const extractedPdf = await extractPdfText(pdfBuffer)
+      documentText = extractedPdf.text || ''
+
+      if (documentText.trim() && canPersistDocumentText) {
+        await supabase
+          .from('documents')
+          .update({ document_text: documentText })
+          .eq('id', doc.id)
+          .eq('user_id', user.id)
+          .then(() => {})
+          .catch((persistError) => {
+            console.warn('[chat] Could not store extracted document text:', persistError?.message)
+          })
+      }
+    }
+
+    if (!documentText.trim()) {
+      return fail(res, {
+        status: 422,
+        message: 'We could not read enough text from this PDF yet. Please try uploading a clearer PDF and ask again.',
+      })
+    }
 
     const recentHistory = Array.isArray(history)
       ? history.slice(-10)
           .map(e => ({ role: e?.role === 'user' ? 'user' : 'assistant', text: `${e?.text || ''}`.trim().slice(0, 2000) }))
           .filter(e => e.text)
       : []
-    const historyText = recentHistory.length
-      ? recentHistory.map(e => `${e.role === 'user' ? 'Student' : 'Assistant'}: ${e.text}`).join('\n')
-      : 'No previous conversation.'
-
-    const result = await runGeminiTask(() => ai.models.generateContent({
-      model: getGeminiModelName(),
-      contents: [
-        { text: [`Conversation so far:\n${historyText}`, `Student: ${message.trim()}`].join('\n\n') },
-        makeGeminiFilePart(geminiFile),
-      ],
-      config: {
-        systemInstruction: [
-          'You are PrepPal, an exam prep assistant.',
-          `The student uploaded a document titled "${doc.title}".`,
-          'Answer ONLY from the content in the provided PDF.',
-          'If the answer is not in the PDF, say exactly: "I could not find that in your document."',
-          'Be concise, clear, and student-friendly.',
-        ].join(' '),
-      },
-    }), {
-      label: 'Document chat',
-      userMessage: 'AI is temporarily busy. Please try again in about a minute.',
-      quotaUserMessage: 'AI is temporarily unavailable. Please try again later.',
+    const reply = await groqChatWithText({
+      documentTitle: doc.title || 'notes.pdf',
+      documentText,
+      message,
+      history: recentHistory,
     })
-
-    reply = `${result.text || ''}`.trim() || 'I could not find that in your document.'
 
     // ── Save + update counter ────────────────────────────────────
     await supabase.from('messages').insert([
@@ -152,6 +169,13 @@ export default async function handler(req, res) {
     })
 
   } catch (error) {
+    if (error?.status === 429 && error?.groqModel) {
+      return fail(res, {
+        status: 429,
+        retryAfterSeconds: error.retryAfterSeconds || 10,
+        message: error.message || 'Chat is a little busy right now. Please wait a few seconds and try again.',
+      })
+    }
     return fail(res, error)
   }
 }

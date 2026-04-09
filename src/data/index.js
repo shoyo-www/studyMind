@@ -76,4 +76,5 @@ export const NAV_ITEMS = [
   { id: 'flashcards',label: 'Flashcards',       section: null        },
   { id: 'mocktest',  label: 'Mock Test',         section: null        },
   { id: 'progress',  label: 'My Progress',      section: null        },
+  { id: 'profile',   label: 'Profile',          section: 'Account'   },
 ]
