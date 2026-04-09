@@ -156,7 +156,7 @@ function SetupPhase({ documents, activeDocument, onGenerate, onResume, loading, 
 
             <button
               onClick={() => onGenerate({ documentId: docId })}
-              disabled={loading || !docId || Boolean(existingTest)}
+              disabled={loading || loadingList || !docId || Boolean(existingTest)}
               className="w-full py-4 rounded-2xl text-white font-semibold text-base transition-all disabled:opacity-50"
               style={{ background: loading ? '#A5B4FC' : '#6c63ff' }}>
               {loading ? (
@@ -166,7 +166,7 @@ function SetupPhase({ documents, activeDocument, onGenerate, onResume, loading, 
                   </svg>
                   Generating question paper…
                 </span>
-              ) : existingTest ? 'Mock test already created for this PDF' : 'Generate Mock Test'}
+              ) : loadingList ? 'Checking existing mock tests…' : existingTest ? 'Mock test already created for this PDF' : 'Generate Mock Test'}
             </button>
 
           </div>

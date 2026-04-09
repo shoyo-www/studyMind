@@ -212,6 +212,7 @@ export default function Flashcards({
   const [done, setDone] = useState(false)
   const [loading, setLoading] = useState(false)
   const [pending, setPending] = useState(false)
+  const [checkingExisting, setCheckingExisting] = useState(false)
   const [error, setError] = useState('')
 
   const activeDocumentId = activeDocument?.id || null
@@ -220,11 +221,6 @@ export default function Flashcards({
   const total = allCards.length
   const doneCount = known.length + skipped.length
   const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0
-  const showLoader = loading || pending
-  const loaderSubtitle = pending
-    ? `Preparing your ${focusedTopic ? `${focusedTopic} ` : ''}flashcards from the selected PDF`.replace(/\s+/g, ' ').trim()
-    : 'Loading your flashcards'
-
   function resetRound(cards) {
     setDeck([...cards])
     setKnown([])
@@ -380,7 +376,10 @@ export default function Flashcards({
   }, [deck])
 
   useEffect(() => {
+    let cancelled = false
+
     clearFlashcardState()
+    setCheckingExisting(false)
 
     if (!activeDocumentId || !activeDocumentIsPdf) {
       if (activeDocument && !activeDocumentIsPdf) {
@@ -389,7 +388,19 @@ export default function Flashcards({
       return
     }
 
-    void loadLatestFlashcards(activeDocumentId)
+    setCheckingExisting(true)
+
+    void (async () => {
+      await loadLatestFlashcards(activeDocumentId, { silent: true })
+
+      if (!cancelled) {
+        setCheckingExisting(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
   }, [activeDocumentId, activeDocument?.mime_type, focusedTopic])
 
   useEffect(() => {
@@ -414,7 +425,7 @@ export default function Flashcards({
         action={(
           <button
             onClick={pending ? () => loadLatestFlashcards(activeDocumentId) : generateFlashcards}
-            disabled={!activeDocument || loading || (!activeDocumentIsPdf && !pending)}
+            disabled={!activeDocument || loading || checkingExisting || (!activeDocumentIsPdf && !pending)}
             className="text-xs px-3.5 py-2 border border-zinc-200 rounded-lg text-zinc-500 hover:bg-zinc-50 transition-colors disabled:opacity-50"
           >
             {pending ? t('flashcards.checkStatus') : t('flashcards.generate')}
@@ -445,6 +456,11 @@ export default function Flashcards({
         ) : !activeDocumentIsPdf ? (
           <div className="max-w-md w-full rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-700">
             {t('flashcards.pdfOnly')}
+          </div>
+        ) : checkingExisting ? (
+          <div className="max-w-md w-full rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+            <div className="font-semibold text-zinc-800 mb-2">Checking your flashcards</div>
+            <div>We&apos;re loading any saved or auto-generated deck for this document before showing the generate option.</div>
           </div>
         ) : pending ? (
           <div className="max-w-md w-full rounded-2xl border border-violet-100 bg-white p-6 text-sm text-zinc-600 shadow-sm">

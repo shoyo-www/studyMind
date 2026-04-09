@@ -78,6 +78,7 @@ export default function Quiz({
   const [done, setDone] = useState(false)
   const [loading, setLoading] = useState(false)
   const [pending, setPending] = useState(false)
+  const [checkingExisting, setCheckingExisting] = useState(false)
   const [error, setError] = useState('')
   const saveTimeoutRef = useRef(null)
 
@@ -90,12 +91,6 @@ export default function Quiz({
   const answeredCount = answers.filter((answer) => answer !== null && answer !== undefined).length
   const pct = questions.length ? Math.round(((qIdx + 1) / questions.length) * 100) : 0
   const activeDocumentIsPdf = activeDocument?.mime_type === 'application/pdf'
-  const showLoader = loading || pending
-  const focusLabel = focusedTopic ? `Focused on ${focusedTopic}` : ''
-  const loaderSubtitle = pending
-    ? `Preparing your ${focusLabel ? `${focusedTopic} ` : ''}${QUIZ_QUESTION_COUNT}-question quiz`.replace(/\s+/g, ' ').trim()
-    : 'Loading your quiz'
-
   function clearQuizState({ keepError = false } = {}) {
     setQuiz(null)
     setQuestions([])
@@ -135,10 +130,13 @@ export default function Quiz({
       const result = await quizApi.getLatest(documentId, { type: 'mcq', topic: focusedTopic || undefined, resumeOnly: true })
       if (result?.quiz && (result?.questions?.length || result?.quiz?.questions?.length)) {
         applyReadyQuiz(result, { restoreProgress: true })
+        return true
       }
     } catch {
       // Keep the quiz page usable even if resume lookup fails.
     }
+
+    return false
   }
 
   async function loadLatestQuiz(documentId, options = {}) {
@@ -269,7 +267,10 @@ export default function Quiz({
   }
 
   useEffect(() => {
+    let cancelled = false
+
     clearQuizState()
+    setCheckingExisting(false)
 
     if (!activeDocumentId || !activeDocumentIsPdf) {
       if (activeDocument && !activeDocumentIsPdf) {
@@ -278,7 +279,23 @@ export default function Quiz({
       return
     }
 
-    void loadSavedQuizProgress(activeDocumentId)
+    setCheckingExisting(true)
+
+    void (async () => {
+      const restored = await loadSavedQuizProgress(activeDocumentId)
+
+      if (!restored) {
+        await loadLatestQuiz(activeDocumentId, { silent: true })
+      }
+
+      if (!cancelled) {
+        setCheckingExisting(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
   }, [activeDocumentId, activeDocument?.mime_type, focusedTopic])
 
   useEffect(() => {
@@ -323,7 +340,7 @@ export default function Quiz({
         action={(
           <button
             onClick={pending ? () => loadLatestQuiz(activeDocumentId) : generateQuiz}
-            disabled={!activeDocument || loading || (!activeDocumentIsPdf && !pending)}
+            disabled={!activeDocument || loading || checkingExisting || (!activeDocumentIsPdf && !pending)}
             className="text-xs px-3.5 py-2 border border-zinc-200 rounded-lg text-zinc-500 hover:bg-zinc-50 transition-colors disabled:opacity-50"
           >
             {pending ? 'Check status' : `Generate ${QUIZ_QUESTION_COUNT}-question quiz`}
@@ -378,6 +395,14 @@ export default function Quiz({
         ) : !activeDocumentIsPdf ? (
           <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
             AI quiz generation currently supports PDF documents only.
+          </div>
+        ) : checkingExisting ? (
+          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-center">
+            <div className="w-11 h-11 rounded-full border-4 border-zinc-100 border-t-violet-500 animate-spin mx-auto mb-4" />
+            <div className="text-base font-medium text-zinc-800 mb-2">Checking your latest quiz</div>
+            <p className="text-sm text-zinc-500 leading-relaxed">
+              We&apos;re loading any saved or auto-generated quiz for this document before showing the generate option.
+            </p>
           </div>
         ) : pending ? (
           <div className="rounded-2xl border border-violet-100 bg-white px-6 py-10 text-center">
