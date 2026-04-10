@@ -258,6 +258,7 @@ export default function Flashcards({
     setKnown([])
     setSkipped([])
     setDone(nextCards.length === 0)
+    setLoading(false)
     setPending(false)
     setError('')
   }

@@ -126,6 +126,7 @@ export default function Quiz({
     setAnswers(nextAnswers)
     setQIdx(nextIndex)
     setDone(false)
+    setLoading(false)
     setPending(false)
     setError('')
   }
