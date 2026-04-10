@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import TopBar from '../components/TopBar'
 import StatCard from '../components/StatCard'
 import { useT } from '../i18n'
@@ -7,6 +8,7 @@ import {
   getDisplayName,
   getTopicCount,
 } from '../lib/documents'
+import { progressApi } from '../lib/api'
 
 function DocCard({ document, onOpen, t, lang }) {
   return (
@@ -55,6 +57,24 @@ export default function Dashboard({
   setScreen,
 }) {
   const { t, lang } = useT()
+  const [weakTopics, setWeakTopics]         = useState([])
+  const [predictedScore, setPredictedScore] = useState(null)
+  const [mockStats, setMockStats]           = useState(null)
+
+  useEffect(() => {
+    progressApi.get().then(data => {
+      if (data?.weakTopics?.length) setWeakTopics(data.weakTopics)
+      if (data?.mockTestStats)      setMockStats(data.mockTestStats)
+      // Predicted score: quiz avg × 0.4 + mock avg × 0.6
+      const quizAvg = data?.stats?.bestScore || 0
+      const mockAvg = data?.mockTestStats?.avgScore || 0
+      if (quizAvg || mockAvg) {
+        const weight = mockAvg ? (quizAvg * 0.4 + mockAvg * 0.6) : quizAvg
+        setPredictedScore(Math.round(weight))
+      }
+    }).catch(() => {})
+  }, [documents.length])
+
   const hour = new Date().getHours()
   const greeting = hour < 12
     ? t('dashboard.greeting')
@@ -71,7 +91,13 @@ export default function Dashboard({
     { label: t('dashboard.stats.documents'), value: String(stats?.documentCount ?? documents.length), change: `${topicCount} ${t('dashboard.stats.topics').toLowerCase()}` },
     { label: t('dashboard.stats.topics'), value: String(totalCoveredTopics), change: `${topicCount} total` },
     { label: t('dashboard.stats.quizAvg'), value: `${avgQuizScore}%`, change: `${stats?.attemptedQuizCount ?? 0} quizzes` },
-    { label: t('dashboard.stats.readiness'), value: `${readinessPct}%`, change: documents.length ? `${documents[0].subject || 'General'} focus` : t('common.comingSoon') },
+    {
+      label: predictedScore !== null ? 'Predicted Score' : t('dashboard.stats.readiness'),
+      value: predictedScore !== null ? `${predictedScore}%` : `${readinessPct}%`,
+      change: predictedScore !== null
+        ? (predictedScore >= 75 ? 'On track for exam 🎯' : predictedScore >= 50 ? 'Needs improvement' : 'More practice needed')
+        : (documents.length ? `${documents[0].subject || 'General'} focus` : t('common.comingSoon')),
+    },
   ]
 
   const topDocument = documents[0]
@@ -147,6 +173,92 @@ export default function Dashboard({
           </div>
         )}
 
+        {/* ── Smart Next Step Card ───────────────────────────────── */}
+        {documents.length > 0 && (() => {
+          const topWeak  = weakTopics[0]
+          const hasQuiz  = (stats?.attemptedQuizCount || 0) > 0
+          const hasMock  = mockStats?.submittedCount > 0
+
+          // Determine what to show
+          let card = null
+
+          if (topWeak && topWeak.score !== null && topWeak.score < 60) {
+            // Weak topic found from quiz history
+            card = {
+              emoji: '🎯',
+              label: 'Focus area',
+              bg: '#FEF2F2', border: '#FECACA', labelColor: '#DC2626',
+              title: `You're weak on: ${topWeak.topic}`,
+              subtitle: `${topWeak.score}% accuracy · ${topWeak.detail || ''}`,
+              cta: 'Practice this now →',
+              ctaBg: '#DC2626',
+              onClick: () => topWeak.documentId ? openDocument(topWeak.documentId, 'quiz') : setScreen('quiz'),
+            }
+          } else if (!hasQuiz) {
+            // Never taken a quiz — nudge them
+            card = {
+              emoji: '❓',
+              label: 'Get started',
+              bg: '#EEF2FF', border: '#C7D2FE', labelColor: '#4338CA',
+              title: 'Take your first quiz',
+              subtitle: 'PrepPal will learn your weak topics and guide you from there.',
+              cta: 'Start quiz →',
+              ctaBg: '#6c63ff',
+              onClick: () => openDocument(documents[0]?.id, 'quiz'),
+            }
+          } else if (!hasMock) {
+            // Has quizzes but no mock test yet
+            card = {
+              emoji: '📋',
+              label: 'Next level',
+              bg: '#FFFBEB', border: '#FDE68A', labelColor: '#B45309',
+              title: 'Try a full mock test',
+              subtitle: "See how you'd do in a real exam — AI marks every answer.",
+              cta: 'Generate mock test →',
+              ctaBg: '#D97706',
+              onClick: () => setScreen('mocktest'),
+            }
+          } else if (predictedScore !== null) {
+            // Has quiz + mock data — show predicted score
+            const colour = predictedScore >= 75 ? '#059669' : predictedScore >= 50 ? '#D97706' : '#DC2626'
+            card = {
+              emoji: predictedScore >= 75 ? '🏆' : predictedScore >= 50 ? '📈' : '⚠️',
+              label: 'Predicted exam score',
+              bg: '#F0FDF4', border: '#BBF7D0', labelColor: colour,
+              title: `You're on track for ${predictedScore}%`,
+              subtitle: predictedScore >= 75
+                ? 'Great progress! Keep practicing to push higher.'
+                : predictedScore >= 50
+                  ? 'Getting there. Focus on your weak topics to improve.'
+                  : `Need more practice. Your weakest area: ${topWeak?.topic || 'check progress page'}`,
+              cta: predictedScore < 75 ? 'Fix weak topics →' : 'Keep practicing →',
+              ctaBg: colour,
+              onClick: () => topWeak?.documentId ? openDocument(topWeak.documentId, 'quiz') : setScreen('progress'),
+            }
+          }
+
+          if (!card) return null
+
+          return (
+            <div className="mb-6 sm:mb-8 rounded-2xl border px-5 py-4 flex items-center justify-between gap-4"
+              style={{ background: card.bg, borderColor: card.border }}>
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="text-2xl shrink-0">{card.emoji}</div>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color: card.labelColor }}>{card.label}</div>
+                  <div className="text-sm font-semibold text-zinc-900 truncate">{card.title}</div>
+                  <div className="text-xs text-zinc-500 truncate mt-0.5">{card.subtitle}</div>
+                </div>
+              </div>
+              <button onClick={card.onClick}
+                className="text-xs font-semibold text-white px-4 py-2 rounded-xl shrink-0 transition-all hover:opacity-85"
+                style={{ background: card.ctaBg }}>
+                {card.cta}
+              </button>
+            </div>
+          )
+        })()}
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {statsCards.map((card) => <StatCard key={card.label} {...card} />)}
         </div>
@@ -178,7 +290,7 @@ export default function Dashboard({
                 </button>
               )}
             >
-              No documents yet. Upload your first PDF or DOCX to begin.
+              No documents yet. Upload your first PDF to begin.
             </Notice>
           )}
         </div>

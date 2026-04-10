@@ -443,7 +443,81 @@ function ExamPhase({ mockTest, questions, onSubmit, submitting }) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// PHASE 3 — Results
+// PHASE 3 — Marking
+// ════════════════════════════════════════════════════════════════════
+function MarkingPhase({ mockTest, markingState, onRefresh, onBack }) {
+  const progressTotal = Math.max(Number(markingState?.progressTotal || mockTest?.questionCount || 0), 0)
+  const progressDone = Math.min(progressTotal, Math.max(Number(markingState?.progressDone || 0), 0))
+  const progressPct = progressTotal > 0 ? Math.round((progressDone / progressTotal) * 100) : 0
+  const status = markingState?.status || 'queued'
+  const isFailed = status === 'failed'
+
+  return (
+    <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-8">
+      <div className="max-w-xl mx-auto">
+        <div className="bg-white border border-zinc-100 rounded-3xl p-6 sm:p-8">
+          <div className="flex items-center justify-center w-16 h-16 rounded-2xl mx-auto mb-5"
+            style={{ background: isFailed ? '#FEF2F2' : '#EEF2FF', color: isFailed ? '#DC2626' : '#4F46E5' }}>
+            <div className={`w-7 h-7 rounded-full border-[3px] ${isFailed ? 'border-red-200' : 'border-violet-200'} border-t-current ${isFailed ? '' : 'animate-spin'}`} />
+          </div>
+          <div className="text-center mb-6">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-400 font-semibold mb-2">
+              {isFailed ? 'Marking Paused' : status === 'processing' ? 'AI Marking In Progress' : 'Queued For Marking'}
+            </div>
+            <div className="text-2xl font-semibold text-zinc-900 mb-2" style={{ fontFamily: 'Syne, sans-serif' }}>
+              {isFailed ? 'We hit a delay while marking your paper' : 'Your paper is being evaluated'}
+            </div>
+            <p className="text-sm text-zinc-500 leading-relaxed">
+              {isFailed
+                ? (markingState?.errorMessage || 'Please check again in a moment. Your submission is still saved.')
+                : 'You can stay on this screen while we grade each answer in the background and prepare your full breakdown.'}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4 mb-5">
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="font-medium text-zinc-700">Progress</span>
+              <span className="text-zinc-500">{progressDone}/{progressTotal || '0'} questions</span>
+            </div>
+            <div className="h-2.5 bg-white rounded-full overflow-hidden border border-zinc-100">
+              <div className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${progressPct}%`, background: isFailed ? '#F97316' : '#6c63ff' }} />
+            </div>
+            <div className="mt-2 text-xs text-zinc-400">
+              {isFailed ? 'Marking stopped before completion.' : `${progressPct}% complete`}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+            <div className="rounded-2xl border border-zinc-100 px-4 py-3">
+              <div className="text-[10px] uppercase tracking-widest text-zinc-400 font-medium mb-1">Paper</div>
+              <div className="text-sm font-medium text-zinc-800 truncate">{mockTest?.title || 'Mock Test'}</div>
+            </div>
+            <div className="rounded-2xl border border-zinc-100 px-4 py-3">
+              <div className="text-[10px] uppercase tracking-widest text-zinc-400 font-medium mb-1">Status</div>
+              <div className="text-sm font-medium text-zinc-800 capitalize">{status}</div>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={onRefresh}
+              className="flex-1 py-3 rounded-xl text-sm font-semibold text-white transition-all"
+              style={{ background: '#6c63ff' }}>
+              Check progress
+            </button>
+            <button onClick={onBack}
+              className="flex-1 py-3 rounded-xl text-sm font-medium border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-all">
+              Back
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PHASE 4 — Results
 // ════════════════════════════════════════════════════════════════════
 function ResultsPhase({ result, onRetry, onBack, onPracticeTopic, onReviewTopic }) {
   const [tab,       setTab]       = useState('overview')
@@ -627,6 +701,15 @@ function ResultsPhase({ result, onRetry, onBack, onPracticeTopic, onReviewTopic 
                         </ul>
                       </div>
                     )}
+                    {/* Model answer reveal — shown after submission */}
+                    {a.modelAnswer && (
+                      <div className="border-t border-zinc-100 pt-4 mt-2">
+                        <div className="text-[10px] uppercase tracking-widest text-violet-600 font-medium mb-2">📖 Model Answer</div>
+                        <div className="text-xs text-violet-900 bg-violet-50 border border-violet-100 rounded-xl p-3 leading-relaxed whitespace-pre-wrap">
+                          {a.modelAnswer}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -664,6 +747,8 @@ export default function MockTest({
   const [mockTest,   setMockTest]   = useState(null)
   const [questions,  setQuestions]  = useState([])
   const [result,     setResult]     = useState(null)
+  const [submissionId, setSubmissionId] = useState('')
+  const [markingState, setMarkingState] = useState(null)
   const [generating, setGenerating] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error,      setError]      = useState('')
@@ -671,6 +756,9 @@ export default function MockTest({
   function startExam(data) {
     setMockTest(data.mockTest)
     setQuestions(data.questions)
+    setSubmissionId('')
+    setMarkingState(null)
+    setResult(null)
     setPhase('exam')
   }
 
@@ -703,8 +791,14 @@ export default function MockTest({
     setSubmitting(true); setError('')
     try {
       const data = await mockTestApi.submit(mockTest.id, answers, timeTakenSecs)
-      setResult(data.result)
-      setPhase('results')
+      setSubmissionId(data.submissionId || '')
+      setMarkingState({
+        status: data.status || 'queued',
+        progressDone: Number(data.progressDone || 0),
+        progressTotal: Number(data.progressTotal || questions.length || 0),
+        submittedAt: data.submittedAt || null,
+      })
+      setPhase('marking')
     } catch (e) {
       setError(e.message || 'Submission failed. Please try again.')
     } finally {
@@ -712,14 +806,62 @@ export default function MockTest({
     }
   }
 
+  async function refreshSubmissionStatus(targetSubmissionId = submissionId, options = {}) {
+    const { silent = false } = options
+    if (!targetSubmissionId) return
+
+    try {
+      const data = await mockTestApi.getSubmission(targetSubmissionId)
+      setMarkingState(data)
+
+      if (data?.status === 'ready' && data?.result) {
+        setResult(data.result)
+        setError('')
+        setPhase('results')
+        return
+      }
+
+      if (data?.status === 'failed' && !silent) {
+        setError(data.errorMessage || 'Auto-marking failed. Please try again.')
+      }
+    } catch (e) {
+      if (!silent) {
+        setError(e.message || 'We could not refresh your marking progress. Please try again.')
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (phase !== 'marking' || !submissionId) return
+
+    let cancelled = false
+
+    const load = async (silent = false) => {
+      if (cancelled) return
+      await refreshSubmissionStatus(submissionId, { silent })
+    }
+
+    void load(false)
+    const intervalId = setInterval(() => {
+      void load(true)
+    }, 2500)
+
+    return () => {
+      cancelled = true
+      clearInterval(intervalId)
+    }
+  }, [phase, submissionId])
+
   const TITLES = {
     setup:   'Mock Test',
     exam:    mockTest?.title || 'Exam in Progress',
+    marking: 'Marking in Progress',
     results: 'Results',
   }
   const SUBTITLES = {
     setup:   'Generate one mock test for any uploaded PDF and reuse the same paper whenever you return.',
     exam:    `${questions.length} questions · ${mockTest?.totalMarks} marks · ${mockTest?.durationMinutes} min`,
+    marking: markingState ? `${Math.max(Number(markingState.progressDone || 0), 0)}/${Math.max(Number(markingState.progressTotal || 0), 0)} answers marked` : 'Your answers are being evaluated in the background.',
     results: result ? `${result.marksObtained}/${result.totalMarks} · Grade ${result.grade}` : '',
   }
 
@@ -746,11 +888,27 @@ export default function MockTest({
       {phase === 'exam' && mockTest && (
         <ExamPhase mockTest={mockTest} questions={questions} onSubmit={handleSubmit} submitting={submitting} />
       )}
+      {phase === 'marking' && mockTest && (
+        <MarkingPhase
+          mockTest={mockTest}
+          markingState={markingState}
+          onRefresh={() => refreshSubmissionStatus(submissionId)}
+          onBack={() => {
+            setPhase('setup')
+            setMockTest(null)
+            setQuestions([])
+            setResult(null)
+            setSubmissionId('')
+            setMarkingState(null)
+            setError('')
+          }}
+        />
+      )}
       {phase === 'results' && result && (
         <ResultsPhase
           result={result}
-          onRetry={() => { setPhase('exam'); setResult(null) }}
-          onBack={() => { setPhase('setup'); setMockTest(null); setQuestions([]); setResult(null); setError('') }}
+          onRetry={() => { setPhase('exam'); setResult(null); setSubmissionId(''); setMarkingState(null); setError('') }}
+          onBack={() => { setPhase('setup'); setMockTest(null); setQuestions([]); setResult(null); setSubmissionId(''); setMarkingState(null); setError('') }}
           onPracticeTopic={(topic) => openStudyFocus?.({
             documentId: activeDocument?.id || mockTest?.documentId || null,
             topic,

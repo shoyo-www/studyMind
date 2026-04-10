@@ -27,7 +27,6 @@ const plans = [
       { text: 'Full progress analytics',         included: true },
       { text: 'Flashcards & spaced rep.',        included: true },
       { text: 'Mock exam simulator',             included: true },
-      { text: 'YouTube & URL import',            included: true },
       { text: 'Export notes as PDF',             included: true },
       { text: 'Priority support',                included: false },
     ],
@@ -52,7 +51,7 @@ const faqs = [
   { q: 'Can I cancel anytime?',                a: 'Yes, absolutely. No contracts, no hidden fees. Cancel from your account settings anytime.' },
   { q: "What happens to my data if I cancel?", a: 'Your uploaded documents and notes stay safe for 30 days after cancellation. You can export everything before that.' },
   { q: 'Is the ₹199/month price locked in?',   a: "Yes — if you subscribe now, your price is locked at ₹199/month even if we increase pricing later for new users." },
-  { q: 'Does it work for all subjects?',        a: 'Yes! Upload any PDF, DOCX, or PPTX — Biology, Chemistry, Physics, History, Law, MBA prep — PrepPal works for all.' },
+  { q: 'Does it work for all subjects?',        a: 'Yes. Upload a PDF for any subject — Biology, Chemistry, Physics, History, Law, MBA prep, and more.' },
   { q: 'What payment methods do you accept?',  a: 'UPI, Debit/Credit card, Net Banking, and Paytm via Razorpay. All payments are 100% secure.' },
 ]
 

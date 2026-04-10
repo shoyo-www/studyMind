@@ -9,7 +9,6 @@ export default function Upload({
   onOpenSidebar, refreshAppData, setSelectedDocumentId, setScreen }) {
   const { t } = useT()
   const fileInputRef = useRef(null)
-  const [link, setLink] = useState('')
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -19,11 +18,6 @@ export default function Upload({
 
   const formats = [
     { label: 'PDF', color: 'bg-violet-50 text-violet-600 border-violet-100' },
-    { label: 'DOCX', color: 'bg-blue-50 text-blue-600 border-blue-100' },
-    { label: 'PPTX', color: 'bg-amber-50 text-amber-600 border-amber-100' },
-    { label: 'YouTube', color: 'bg-red-50 text-red-500 border-red-100' },
-    { label: 'Article URL', color: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
-    { label: 'Image / Handwriting', color: 'bg-zinc-50 text-zinc-500 border-zinc-200' },
   ]
 
   const autoFeatures = [
@@ -112,11 +106,6 @@ export default function Upload({
     handleUpload(file)
   }
 
-  function handleLinkImport() {
-    setError('')
-    setSuccessMessage('Link imports are next in the queue. File uploads are live now.')
-  }
-
   return (
     <div className="relative flex flex-col flex-1 min-h-0">
       <TopBar onOpenSidebar={onOpenSidebar} title={t('upload.title')} subtitle={t('upload.subtitle')} />
@@ -124,7 +113,7 @@ export default function Upload({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          accept=".pdf,application/pdf"
           className="hidden"
           onChange={handleFileChange}
         />
@@ -207,28 +196,6 @@ export default function Upload({
             )}
           </div>
         )}
-
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex-1 h-px bg-zinc-100" />
-          <span className="text-xs text-zinc-300">{t('upload.pasteLink')}</span>
-          <div className="flex-1 h-px bg-zinc-100" />
-        </div>
-
-        <div className="flex gap-2 mb-8">
-          <input
-            type="text"
-            value={link}
-            onChange={(event) => setLink(event.target.value)}
-            placeholder={t('upload.linkPlaceholder')}
-            className="flex-1 border border-zinc-200 rounded-lg px-4 py-2.5 text-sm text-zinc-700 placeholder-zinc-300 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-50 transition-all"
-          />
-          <button
-            onClick={handleLinkImport}
-            className="px-4 py-2.5 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors whitespace-nowrap"
-          >
-            {t('upload.import')}
-          </button>
-        </div>
 
         <div className="mb-8">
           <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300 mb-3">{t('upload.formats')}</div>

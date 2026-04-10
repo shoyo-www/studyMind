@@ -2,7 +2,6 @@ export const MAX_UPLOAD_FILE_SIZE = 50 * 1024 * 1024
 
 const KIND_TO_MIME_TYPE = {
   pdf: 'application/pdf',
-  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 }
 
 const MIME_TYPE_TO_KIND = new Map(
@@ -11,7 +10,6 @@ const MIME_TYPE_TO_KIND = new Map(
 
 const EXTENSION_TO_KIND = new Map([
   ['pdf', 'pdf'],
-  ['docx', 'docx'],
 ])
 
 function getFileName(file = {}) {

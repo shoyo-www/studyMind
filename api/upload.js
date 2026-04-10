@@ -82,7 +82,7 @@ export default async function handler(req, res) {
     const validationError = validateUploadFile(file)
     if (validationError === 'no_file') return fail(res, { status: 400, message: 'Please choose a file to upload.' })
     if (validationError === 'empty_file') return fail(res, { status: 400, message: 'That file looks empty. Please choose another one.' })
-    if (validationError === 'invalid_type') return fail(res, { status: 400, message: 'Please upload a PDF or DOCX file.' })
+    if (validationError === 'invalid_type') return fail(res, { status: 400, message: 'Please upload a PDF file.' })
     if (validationError === 'file_too_large') return fail(res, { status: 400, message: 'That file is too large. Please keep it under 50MB.' })
 
     uploadedTempPath = file.filepath

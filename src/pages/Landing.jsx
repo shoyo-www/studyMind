@@ -9,8 +9,8 @@ const FEATURES = [
         <path d="M7 11H13M7 14H10" stroke="#6c63ff" strokeWidth="1.4" strokeLinecap="round"/>
       </svg>
     ),
-    title: 'Upload Anything',
-    desc: 'PDF, DOCX, PPTX, YouTube videos, or article links. PrepPal reads it all instantly.',
+    title: 'Upload Your PDF',
+    desc: 'Upload a PDF and turn it into quizzes, flashcards, chat, and a study roadmap.',
   },
   {
     icon: (
@@ -67,7 +67,7 @@ const FEATURES = [
 ]
 
 const STEPS = [
-  { num: '01', title: 'Upload your notes', desc: 'Drop any PDF, PPT, or Word doc. Or paste a YouTube link. PrepPal processes it in seconds.' },
+  { num: '01', title: 'Upload your notes', desc: 'Upload your PDF and PrepPal starts preparing quizzes, flashcards, and your roadmap.' },
   { num: '02', title: 'Get a learning plan', desc: 'AI generates a roadmap, flashcards, and quiz questions automatically. No setup needed.' },
   { num: '03', title: 'Study smarter', desc: 'Chat with your notes, take quizzes, track weak areas, and walk into your exam confident.' },
 ]
@@ -151,7 +151,7 @@ export default function Landing({ onGetStarted, onLogin }) {
           </h1>
 
           <p className="text-lg text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            PrepPal turns your PDFs, lecture notes, and textbooks into an interactive AI tutor —
+            PrepPal turns your PDFs into an interactive AI tutor —
             with quizzes, roadmaps, and chat. Built for Indian students. Starting at ₹0.
           </p>
 

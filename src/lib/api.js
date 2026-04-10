@@ -223,6 +223,7 @@ export const mockTestApi = {
       method: 'POST',
       body:   JSON.stringify({ mockTestId, answers, timeTakenSecs }),
     }),
+  getSubmission: (submissionId) => apiFetch(`/mocktest/submission?id=${encodeURIComponent(submissionId)}`),
   list: () => apiFetch('/mocktest/list'),
   get: (mockTestId) => apiFetch(`/mocktest/get?id=${encodeURIComponent(mockTestId)}`),
 }

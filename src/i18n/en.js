@@ -68,13 +68,10 @@ const en = {
   // ── Upload ──────────────────────────────────────────────
   upload: {
     title:        'Upload Study Material',
-    subtitle:     'PDF, PPT, Word docs, or paste a link',
+    subtitle:     'Upload a PDF to start studying',
     dropzone:     'Drop your files here',
-    dropzoneSub:  'PDF, DOCX, PPTX · up to 50 MB',
+    dropzoneSub:  'PDF only · up to 50 MB',
     chooseFile:   'Choose file',
-    pasteLink:    'or paste a link',
-    linkPlaceholder: 'Paste YouTube, article, or Google Drive link...',
-    import:       'Import',
     formats:      'Supported formats',
     autoGenerate: 'Auto-generated after upload',
     features: {
@@ -285,9 +282,9 @@ const en = {
     notFound:       'Document not found.',
     generic:        'Something went wrong. Please try again.',
     noFile:         'Please select a file first.',
-    emptyFile:      'This file is empty. Please choose another PDF or DOCX file.',
+    emptyFile:      'This file is empty. Please choose another PDF file.',
     fileTooLarge:   'File is too large. Maximum size is 50MB.',
-    invalidType:    'Only PDF and DOCX files are allowed.',
+    invalidType:    'Only PDF files are allowed.',
   },
 }
 

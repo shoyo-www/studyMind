@@ -4,7 +4,8 @@
   ],
   "functions": {
     "api/mocktest/generate.js": { "maxDuration": 60 },
-    "api/mocktest/submit.js":   { "maxDuration": 60 },
+    "api/mocktest/submit.js":   { "maxDuration": 300 },
+    "api/mocktest/submission.js": { "maxDuration": 60 },
     "api/upload.js":            { "maxDuration": 60 },
     "api/**/*.js":              { "maxDuration": 60 }
   }

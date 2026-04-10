@@ -518,7 +518,6 @@ async function handlePatch(req, res) {
       })
       .eq('id', quizId)
       .eq('user_id', user.id)
-      .eq('attempted', false)
       .select('id, answers, current_index, attempted')
       .single()
 

@@ -324,6 +324,9 @@ export default function Quiz({
   useEffect(() => {
     if (!quiz?.id || pending || done || !questions.length) return
 
+    const hasTouchedQuiz = qIdx > 0 || answers.some((answer) => answer !== null && answer !== undefined)
+    if (!hasTouchedQuiz) return
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current)
     }

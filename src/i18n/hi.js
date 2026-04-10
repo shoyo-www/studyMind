@@ -68,13 +68,10 @@ const hi = {
   // ── Upload ──────────────────────────────────────────────
   upload: {
     title:        'अध्ययन सामग्री अपलोड करें',
-    subtitle:     'PDF, PPT, Word दस्तावेज़, या लिंक पेस्ट करें',
+    subtitle:     'पढ़ाई शुरू करने के लिए PDF अपलोड करें',
     dropzone:     'यहाँ फ़ाइलें छोड़ें',
-    dropzoneSub:  'PDF, DOCX, PPTX · अधिकतम 50 MB',
+    dropzoneSub:  'केवल PDF · अधिकतम 50 MB',
     chooseFile:   'फ़ाइल चुनें',
-    pasteLink:    'या लिंक पेस्ट करें',
-    linkPlaceholder: 'YouTube, आर्टिकल, या Google Drive लिंक पेस्ट करें...',
-    import:       'इम्पोर्ट करें',
     formats:      'समर्थित फॉर्मेट',
     autoGenerate: 'अपलोड के बाद अपने आप बनेगा',
     features: {
@@ -285,9 +282,9 @@ const hi = {
     notFound:     'दस्तावेज़ नहीं मिला।',
     generic:      'कुछ गलत हो गया। कृपया फिर कोशिश करें।',
     noFile:       'पहले एक फ़ाइल चुनें।',
-    emptyFile:    'यह फ़ाइल खाली है। कृपया दूसरी PDF या DOCX फ़ाइल चुनें।',
+    emptyFile:    'यह फ़ाइल खाली है। कृपया दूसरी PDF फ़ाइल चुनें।',
     fileTooLarge: 'फ़ाइल बहुत बड़ी है। अधिकतम आकार 50MB है।',
-    invalidType:  'केवल PDF और DOCX फ़ाइलें अनुमत हैं।',
+    invalidType:  'केवल PDF फ़ाइलें अनुमत हैं।',
   },
 }
 
