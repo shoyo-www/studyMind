@@ -71,6 +71,10 @@ function buildQuizQuery(documentId, options = {}) {
     params.set('topic', options.topic)
   }
 
+  if (options.lang) {
+    params.set('lang', options.lang)
+  }
+
   if (options.resumeOnly) {
     params.set('resumeOnly', '1')
   }

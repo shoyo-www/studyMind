@@ -33,6 +33,7 @@ const QUIZ_COLUMNS = [
   'id',
   'document_id',
   'user_id',
+  'language',
   'topic',
   'type',
   'questions',
@@ -61,6 +62,20 @@ const MAX_COUNT_BY_TYPE = {
 }
 const DEFAULT_FALLBACK_MODEL = 'gemma-4-31b-it'
 
+function getLanguageDefaults(lang = 'en') {
+  const isHindi = lang === 'hi'
+
+  return {
+    generalTopic: isHindi ? 'सामान्य' : 'General',
+    questionLabel: isHindi ? 'प्रश्न' : 'Question',
+    flashcardLabel: isHindi ? 'फ्लैशकार्ड' : 'Flashcard',
+    answerUnavailable: isHindi ? 'उत्तर उपलब्ध नहीं है' : 'Answer unavailable',
+    optionLabel: isHindi ? 'विकल्प' : 'Option',
+    trueLabel: isHindi ? 'सही' : 'True',
+    falseLabel: isHindi ? 'गलत' : 'False',
+  }
+}
+
 function createUnavailableError(message, status = 503, retryAfterSeconds = null) {
   const error = new Error(message)
   error.status = status
@@ -70,15 +85,19 @@ function createUnavailableError(message, status = 503, retryAfterSeconds = null)
   return error
 }
 
-function buildPrompt({ type, count, topic }) {
+function buildPrompt({ type, count, topic, lang = 'en' }) {
   const topicInstruction = topic
     ? `Focus only on the topic "${topic}".`
     : 'Cover the most important concepts across the document.'
+  const languageInstruction = lang === 'hi'
+    ? 'Write every question, option, explanation, flashcard front, flashcard back, and topic in Hindi using Devanagari script.'
+    : 'Write every question, option, explanation, flashcard front, flashcard back, and topic in English.'
 
   if (type === 'truefalse') {
     return [
       `Generate exactly ${count} true/false questions from this document.`,
       topicInstruction,
+      languageInstruction,
       'Return only a JSON array.',
       'Each item must contain question, correct, explanation, and topic.',
     ].join(' ')
@@ -88,6 +107,7 @@ function buildPrompt({ type, count, topic }) {
     return [
       `Generate exactly ${count} flashcards from this document.`,
       topicInstruction,
+      languageInstruction,
       'Return only a JSON array.',
       'Each item must contain front, back, and topic.',
     ].join(' ')
@@ -96,6 +116,7 @@ function buildPrompt({ type, count, topic }) {
   return [
     `Generate exactly ${count} multiple-choice questions from this document.`,
     topicInstruction,
+    languageInstruction,
     'Return only a JSON array.',
     'Each item must contain question, options, correct, explanation, and topic.',
     'options must contain exactly four strings.',
@@ -121,12 +142,14 @@ function getRequestedCount(type, rawCount) {
   return Math.min(maxCount, Math.max(1, Number(rawCount) || fallbackCount))
 }
 
-function normalizeQuestions(rawQuestions = [], type = 'mcq') {
+function normalizeQuestions(rawQuestions = [], type = 'mcq', lang = 'en') {
+  const defaults = getLanguageDefaults(lang)
+
   return rawQuestions
     .map((question, index) => {
       if (type === 'flashcard') {
-        const front = question?.front || question?.question || `Flashcard ${index + 1}`
-        const back = question?.back || question?.explanation || 'Answer unavailable'
+        const front = question?.front || question?.question || `${defaults.flashcardLabel} ${index + 1}`
+        const back = question?.back || question?.explanation || defaults.answerUnavailable
         return {
           question: front,
           front,
@@ -134,18 +157,18 @@ function normalizeQuestions(rawQuestions = [], type = 'mcq') {
           correct: 0,
           explanation: back,
           back,
-          topic: question?.topic || 'General',
+          topic: question?.topic || defaults.generalTopic,
         }
       }
 
       if (type === 'truefalse') {
         const correct = question?.correct === true || question?.correct === 0 ? 0 : 1
         return {
-          question: question?.question || `Question ${index + 1}`,
-          options: ['True', 'False'],
+          question: question?.question || `${defaults.questionLabel} ${index + 1}`,
+          options: [defaults.trueLabel, defaults.falseLabel],
           correct,
           explanation: question?.explanation || '',
-          topic: question?.topic || 'General',
+          topic: question?.topic || defaults.generalTopic,
         }
       }
 
@@ -154,7 +177,7 @@ function normalizeQuestions(rawQuestions = [], type = 'mcq') {
         : []
 
       while (options.length < 4) {
-        options.push(`Option ${options.length + 1}`)
+        options.push(`${defaults.optionLabel} ${options.length + 1}`)
       }
 
       const parsedCorrect = Number(question?.correct)
@@ -163,11 +186,11 @@ function normalizeQuestions(rawQuestions = [], type = 'mcq') {
         : 0
 
       return {
-        question: question?.question || `Question ${index + 1}`,
+        question: question?.question || `${defaults.questionLabel} ${index + 1}`,
         options,
         correct,
         explanation: question?.explanation || '',
-        topic: question?.topic || 'General',
+        topic: question?.topic || defaults.generalTopic,
       }
     })
     .filter((question) => question.question)
@@ -245,6 +268,7 @@ async function loadLatestQuiz(supabase, userId, documentId, options = {}) {
     source = null,
     type = null,
     topic = null,
+    lang = 'en',
     resumeOnly = false,
   } = options
 
@@ -263,6 +287,8 @@ async function loadLatestQuiz(supabase, userId, documentId, options = {}) {
   if (type && ALLOWED_TYPES.has(type)) {
     query = query.eq('type', type)
   }
+
+  query = query.eq('language', lang === 'hi' ? 'hi' : 'en')
 
   if (topic) {
     query = query.eq('topic', topic)
@@ -304,7 +330,7 @@ async function updateQuizRecord(supabase, quizId, payload) {
   return serializeQuiz(data)
 }
 
-async function generateQuestionsWithGemini({ document, count, topic, type, pdfBuffer }) {
+async function generateQuestionsWithGemini({ document, count, topic, type, pdfBuffer, lang = 'en' }) {
   const ai = getQuizGeminiClient()
   const modelCandidates = getQuizModelCandidates()
   const geminiFile = await uploadPdfToGemini(ai, {
@@ -319,7 +345,7 @@ async function generateQuestionsWithGemini({ document, count, topic, type, pdfBu
       const result = await runGeminiTask(() => ai.models.generateContent({
         model: getGeminiModelName(modelName),
         contents: [
-          { text: buildPrompt({ type, count, topic }) },
+          { text: buildPrompt({ type, count, topic, lang }) },
           makeGeminiFilePart(geminiFile),
         ],
         config: {
@@ -341,7 +367,7 @@ async function generateQuestionsWithGemini({ document, count, topic, type, pdfBu
         throw new Error('Quiz response was not an array')
       }
 
-      const questions = normalizeQuestions(parsed, type)
+      const questions = normalizeQuestions(parsed, type, lang)
       if (!questions.length) {
         throw new Error('Quiz generation returned no usable questions')
       }
@@ -370,6 +396,7 @@ async function handleGet(req, res) {
   const documentId = req.query?.documentId
   const requestedType = req.query?.type
   const topic = `${req.query?.topic || ''}`.trim() || null
+  const lang = req.query?.lang === 'hi' ? 'hi' : 'en'
   const type = ALLOWED_TYPES.has(requestedType) ? requestedType : null
   const resumeOnly = req.query?.resumeOnly === '1'
 
@@ -380,7 +407,7 @@ async function handleGet(req, res) {
   const supabase = getAdminSupabase()
   await fetchDocument(supabase, user.id, documentId)
 
-  const latestQuiz = await loadLatestQuiz(supabase, user.id, documentId, { type, topic, resumeOnly })
+  const latestQuiz = await loadLatestQuiz(supabase, user.id, documentId, { type, topic, lang, resumeOnly })
   return ok(res, buildQuizResponse(latestQuiz))
 }
 
@@ -395,11 +422,13 @@ async function handlePost(req, res) {
     count: rawCount,
     type: rawType = 'mcq',
     mode: rawMode = QUIZ_SOURCE.manual,
+    lang: rawLang = 'en',
   } = req.body || {}
 
   const type = ALLOWED_TYPES.has(rawType) ? rawType : 'mcq'
   const count = getRequestedCount(type, rawCount)
   const source = rawMode === QUIZ_SOURCE.autoUpload ? QUIZ_SOURCE.autoUpload : QUIZ_SOURCE.manual
+  const lang = rawLang === 'hi' ? 'hi' : 'en'
 
   if (!documentId) {
     return fail(res, { status: 400, message: 'Please choose a document first.' })
@@ -419,6 +448,7 @@ async function handlePost(req, res) {
     const existingAutoQuiz = await loadLatestQuiz(supabase, user.id, documentId, {
       source: QUIZ_SOURCE.autoUpload,
       type,
+      lang,
     })
     if (existingAutoQuiz && existingAutoQuiz.source === QUIZ_SOURCE.autoUpload && existingAutoQuiz.status !== QUIZ_STATUS.failed) {
       return ok(res, buildQuizResponse(existingAutoQuiz))
@@ -428,7 +458,8 @@ async function handlePost(req, res) {
   const quizShell = await createQuizShell(supabase, {
     user_id: user.id,
     document_id: documentId,
-    topic: topic || 'General',
+    language: lang,
+    topic: topic || getLanguageDefaults(lang).generalTopic,
     type,
     questions: [],
     answers: [],
@@ -468,6 +499,7 @@ async function handlePost(req, res) {
         topic,
         type,
         pdfBuffer,
+        lang,
       })
 
       const readyQuiz = await updateQuizRecord(supabase, quizShell.id, {

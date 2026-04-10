@@ -7,19 +7,44 @@ import { quizApi } from '../lib/api'
 const DEFAULT_FLASHCARD_COUNT = 50
 const DIFF_DOT = { easy: '#22c55e', medium: '#f59e0b', hard: '#ef4444' }
 
-function normalizeFlashcards(questions = []) {
+function getFlashcardLanguageDefaults(lang = 'en') {
+  return {
+    flashcardLabel: lang === 'hi' ? 'फ्लैशकार्ड' : 'Flashcard',
+    answerUnavailable: lang === 'hi' ? 'जवाब उपलब्ध नहीं है' : 'Answer unavailable',
+    generalTopic: lang === 'hi' ? 'सामान्य' : 'General',
+    mediumDifficulty: lang === 'hi' ? 'मध्यम' : 'medium',
+  }
+}
+
+function getLocalizedDifficulty(value, lang = 'en') {
+  const normalized = `${value || ''}`.trim().toLowerCase()
+
+  if (normalized === 'easy' || normalized === 'आसान') {
+    return lang === 'hi' ? 'आसान' : 'easy'
+  }
+
+  if (normalized === 'hard' || normalized === 'कठिन') {
+    return lang === 'hi' ? 'कठिन' : 'hard'
+  }
+
+  return lang === 'hi' ? 'मध्यम' : 'medium'
+}
+
+function normalizeFlashcards(questions = [], lang = 'en') {
+  const defaults = getFlashcardLanguageDefaults(lang)
+
   return questions
     .map((question, index) => ({
       id: question?.id || `${index + 1}`,
-      front: question?.front || question?.question || `Flashcard ${index + 1}`,
-      back: question?.back || question?.explanation || question?.options?.[0] || 'Answer unavailable',
-      topic: question?.topic || 'General',
-      difficulty: question?.difficulty || 'medium',
+      front: question?.front || question?.question || `${defaults.flashcardLabel} ${index + 1}`,
+      back: question?.back || question?.explanation || question?.options?.[0] || defaults.answerUnavailable,
+      topic: question?.topic || defaults.generalTopic,
+      difficulty: getLocalizedDifficulty(question?.difficulty || defaults.mediumDifficulty, lang),
     }))
     .filter((card) => card.front && card.back)
 }
 
-function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset }) {
+function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset, copy }) {
   const [flipped, setFlipped] = useState(false)
   const [dragX, setDragX] = useState(0)
   const [dragY, setDragY] = useState(0)
@@ -123,7 +148,7 @@ function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset }) {
               }}
             >
               <div style={{ border: '4px solid #22c55e', borderRadius: 10, padding: '6px 18px', transform: 'rotate(-12deg)', opacity: Math.min(dragX / 120, 1) }}>
-                <span style={{ fontSize: 26, fontWeight: 900, color: '#22c55e', fontFamily: 'Syne,sans-serif' }}>KNOW ✓</span>
+                <span style={{ fontSize: 26, fontWeight: 900, color: '#22c55e', fontFamily: 'Syne,sans-serif' }}>{copy.overlayKnow}</span>
               </div>
             </div>
           )}
@@ -142,7 +167,7 @@ function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset }) {
               }}
             >
               <div style={{ border: '4px solid #ef4444', borderRadius: 10, padding: '6px 18px', transform: 'rotate(12deg)', opacity: Math.min(-dragX / 120, 1) }}>
-                <span style={{ fontSize: 26, fontWeight: 900, color: '#ef4444', fontFamily: 'Syne,sans-serif' }}>SKIP ✗</span>
+                <span style={{ fontSize: 26, fontWeight: 900, color: '#ef4444', fontFamily: 'Syne,sans-serif' }}>{copy.overlaySkip}</span>
               </div>
             </div>
           )}
@@ -154,7 +179,7 @@ function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset }) {
           </div>
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 28px 8px' }}>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#d4d4d8', marginBottom: 18 }}>Prompt</div>
+            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#d4d4d8', marginBottom: 18 }}>{copy.promptLabel}</div>
             <p style={{ fontSize: 20, fontWeight: 600, fontFamily: 'Syne,sans-serif', letterSpacing: '-0.01em', color: '#111110', textAlign: 'center', lineHeight: 1.4 }}>
               {card.front}
             </p>
@@ -163,7 +188,7 @@ function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset }) {
           <div style={{ padding: '12px 20px 20px', textAlign: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#d4d4d8' }}>
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1.5v4M5.5 7.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><circle cx="5.5" cy="9.5" r=".5" fill="currentColor"/></svg>
-              Tap to flip
+              {copy.tapToFlipShort}
             </div>
           </div>
         </div>
@@ -182,13 +207,13 @@ function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset }) {
           }}
         >
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '28px' }}>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.5)', marginBottom: 18 }}>Answer</div>
+            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.5)', marginBottom: 18 }}>{copy.answerLabel}</div>
             <p style={{ fontSize: 16, fontWeight: 500, color: '#fff', textAlign: 'center', lineHeight: 1.65 }}>
               {card.back}
             </p>
           </div>
           <div style={{ padding: '12px 20px 20px', textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
-            → Know it | ← Review again
+            {copy.swipeReview}
           </div>
         </div>
       </div>
@@ -203,7 +228,7 @@ export default function Flashcards({
   openStudyFocus,
   clearStudyFocus,
 }) {
-  const { t } = useT()
+  const { t, lang } = useT()
   const [quiz, setQuiz] = useState(null)
   const [allCards, setAllCards] = useState([])
   const [deck, setDeck] = useState([])
@@ -218,15 +243,23 @@ export default function Flashcards({
   const activeDocumentId = activeDocument?.id || null
   const focusedTopic = studyFocus?.documentId === activeDocumentId ? `${studyFocus?.topic || ''}`.trim() : ''
   const activeDocumentIsPdf = activeDocument?.mime_type === 'application/pdf'
+  const cardCopy = {
+    promptLabel: t('flashcards.promptLabel'),
+    answerLabel: t('flashcards.answerLabel'),
+    tapToFlipShort: t('flashcards.tapToFlipShort'),
+    swipeReview: t('flashcards.swipeReview'),
+    overlayKnow: t('flashcards.overlayKnow'),
+    overlaySkip: t('flashcards.overlaySkip'),
+  }
   const total = allCards.length
   const doneCount = known.length + skipped.length
   const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0
   const showLoader = loading
   const loaderSubtitle = pending
-    ? 'Checking whether your latest flashcards are ready'
+    ? t('flashcards.checkingTitle')
     : allCards.length
-      ? 'Refreshing your flashcards'
-      : `Generating ${focusedTopic ? `${focusedTopic} ` : ''}flashcards`
+      ? t('flashcards.checkingTitle')
+      : t('flashcards.preparingSub')
 
   function resetRound(cards) {
     setDeck([...cards])
@@ -250,7 +283,7 @@ export default function Flashcards({
 
   function applyReadyDeck(result) {
     const nextQuiz = result?.quiz || null
-    const nextCards = normalizeFlashcards(result?.questions || nextQuiz?.questions || [])
+    const nextCards = normalizeFlashcards(result?.questions || nextQuiz?.questions || [], lang)
 
     setQuiz(nextQuiz)
     setAllCards(nextCards)
@@ -273,7 +306,7 @@ export default function Flashcards({
     }
 
     try {
-      const result = await quizApi.getLatest(documentId, { type: 'flashcard', topic: focusedTopic || undefined })
+      const result = await quizApi.getLatest(documentId, { type: 'flashcard', topic: focusedTopic || undefined, lang })
       const status = result?.status || result?.quiz?.status || 'missing'
 
       if (status === 'ready' && (result?.questions?.length || result?.quiz?.questions?.length)) {
@@ -325,6 +358,7 @@ export default function Flashcards({
         count: DEFAULT_FLASHCARD_COUNT,
         type: 'flashcard',
         topic: focusedTopic || null,
+        lang,
       })
 
       if ((result?.status || result?.quiz?.status) === 'pending') {
@@ -409,7 +443,7 @@ export default function Flashcards({
     return () => {
       cancelled = true
     }
-  }, [activeDocumentId, activeDocument?.mime_type, focusedTopic])
+  }, [activeDocumentId, activeDocument?.mime_type, focusedTopic, lang])
 
   useEffect(() => {
     if (!pending || !activeDocumentId) return
@@ -419,10 +453,10 @@ export default function Flashcards({
     }, 5000)
 
     return () => clearInterval(intervalId)
-  }, [pending, activeDocumentId])
+  }, [pending, activeDocumentId, lang])
 
   const subtitle = activeDocument
-    ? `${t('flashcards.subtitle')} · ${activeDocument.title}${focusedTopic ? ` · Focus: ${focusedTopic}` : ''}`
+    ? `${t('flashcards.subtitle')} · ${activeDocument.title}${focusedTopic ? ` · ${t('flashcards.focusedOn')}: ${focusedTopic}` : ''}`
     : t('flashcards.subtitle')
 
   return (
@@ -444,14 +478,14 @@ export default function Flashcards({
       <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start pt-6 px-6 bg-zinc-50">
         {focusedTopic && (
           <div className="w-full max-w-md mb-4 rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm text-violet-800">
-            <div className="font-semibold mb-1">Focused revision is on</div>
+            <div className="font-semibold mb-1">{t('flashcards.focusedOn')}</div>
             <div className="flex flex-wrap items-center gap-2">
               <span>{focusedTopic}</span>
               <button
                 onClick={clearStudyFocus}
                 className="text-xs px-2.5 py-1 rounded-full border border-violet-200 bg-white text-violet-600 hover:bg-violet-100 transition-colors"
               >
-                Clear focus
+                {t('flashcards.clearFocus')}
               </button>
             </div>
           </div>
@@ -467,8 +501,8 @@ export default function Flashcards({
           </div>
         ) : checkingExisting ? (
           <div className="max-w-md w-full rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
-            <div className="font-semibold text-zinc-800 mb-2">Checking your flashcards</div>
-            <div>We&apos;re loading any saved or auto-generated deck for this document before showing the generate option.</div>
+            <div className="font-semibold text-zinc-800 mb-2">{t('flashcards.checkingTitle')}</div>
+            <div>{t('flashcards.checkingSub')}</div>
           </div>
         ) : pending ? (
           <div className="max-w-md w-full rounded-2xl border border-violet-100 bg-white p-6 text-sm text-zinc-600 shadow-sm">
@@ -482,7 +516,7 @@ export default function Flashcards({
         ) : !allCards.length ? (
           <div className="max-w-md w-full rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-500">
             {focusedTopic
-              ? `No flashcards are ready yet for ${focusedTopic}. Generate a focused deck to start revising this weak area.`
+              ? t('flashcards.focusedEmpty', { topic: focusedTopic })
               : t('flashcards.empty')}
           </div>
         ) : (
@@ -498,14 +532,14 @@ export default function Flashcards({
                 <div className="flex items-center gap-3 text-xs flex-wrap">
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                    <span className="text-zinc-500">{known.length} known</span>
+                    <span className="text-zinc-500">{t('flashcards.knownCount', { count: known.length })}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-red-400" />
-                    <span className="text-zinc-500">{skipped.length} skipped</span>
+                    <span className="text-zinc-500">{t('flashcards.skippedCount', { count: skipped.length })}</span>
                   </div>
                 </div>
-                <span className="text-xs text-zinc-400">{deck.length} left</span>
+                <span className="text-xs text-zinc-400">{t('flashcards.leftCount', { count: deck.length })}</span>
               </div>
 
               <div className="h-1.5 bg-zinc-200 rounded-full overflow-hidden">
@@ -520,16 +554,19 @@ export default function Flashcards({
               <div className="flex flex-col items-center justify-center flex-1 max-w-xs text-center w-full">
                 <div className="text-5xl mb-5">{known.length >= total * 0.7 ? '🎉' : '📚'}</div>
                 <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 24, fontWeight: 600, letterSpacing: '-0.02em', color: '#111110', marginBottom: 6 }}>
-                  Round complete!
+                  {t('flashcards.roundComplete')}
                 </h2>
                 <p className="text-zinc-400 text-sm mb-8">
-                  You knew <strong className="text-emerald-600">{known.length}</strong> and need to review <strong className="text-red-500">{skipped.length}</strong>.
+                  {t('flashcards.roundSummary', {
+                    known: known.length,
+                    skipped: skipped.length,
+                  })}
                 </p>
                 {focusedTopic && (
                   <div className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 mb-6">
                     {skipped.length > 0
-                      ? `You still need another pass on ${focusedTopic}. Review the skipped cards now, then test yourself with a focused quiz.`
-                      : `Great job. You look stronger on ${focusedTopic}. A focused quiz is the best next step.`}
+                      ? t('flashcards.roundWeakTopic', { topic: focusedTopic })
+                      : t('flashcards.roundStrongTopic', { topic: focusedTopic })}
                   </div>
                 )}
 
@@ -553,7 +590,7 @@ export default function Flashcards({
                     <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 22, fontWeight: 700, color: '#111110' }}>
                       {Math.round((known.length / Math.max(total, 1)) * 100)}%
                     </span>
-                    <span style={{ fontSize: 10, color: '#a1a1aa' }}>known</span>
+                    <span style={{ fontSize: 10, color: '#a1a1aa' }}>{t('flashcards.knownPct')}</span>
                   </div>
                 </div>
 
@@ -564,27 +601,27 @@ export default function Flashcards({
                       className="w-full py-3 rounded-xl text-sm font-semibold text-white"
                       style={{ background: '#6c63ff' }}
                     >
-                      Review {skipped.length} skipped
+                      {t('flashcards.reviewSkipped', { count: skipped.length })}
                     </button>
                   )}
                   <button
                     onClick={restart}
                     className="w-full py-3 rounded-xl text-sm font-medium border border-zinc-200 text-zinc-600 hover:bg-white transition-all"
                   >
-                    Start over
+                    {t('flashcards.startOver')}
                   </button>
                   <button
                     onClick={() => setScreen('quiz')}
                     className="w-full py-3 rounded-xl text-sm font-medium text-violet-600 hover:bg-violet-50 transition-all"
                   >
-                    Take a quiz instead →
+                    {t('flashcards.takeQuiz')}
                   </button>
                   {focusedTopic && (
                     <button
                       onClick={() => openStudyFocus?.({ documentId: activeDocumentId, topic: focusedTopic, screen: 'quiz', origin: 'flashcards_result' })}
                       className="w-full py-3 rounded-xl text-sm font-medium border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 transition-all"
                     >
-                      Quiz me on {focusedTopic}
+                      {t('flashcards.quizOnTopic', { topic: focusedTopic })}
                     </button>
                   )}
                 </div>
@@ -596,7 +633,7 @@ export default function Flashcards({
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <div className="text-center">
                         <div className="text-4xl mb-2">✨</div>
-                        <div className="text-sm text-zinc-400">All done!</div>
+                        <div className="text-sm text-zinc-400">{t('flashcards.allDone')}</div>
                       </div>
                     </div>
                   ) : (
@@ -610,6 +647,7 @@ export default function Flashcards({
                           zIndex={index + 10}
                           isTop={stackPos === 0}
                           stackOffset={stackPos}
+                          copy={cardCopy}
                         />
                       )
                     })
@@ -622,11 +660,11 @@ export default function Flashcards({
                       <div className="w-5 h-5 rounded-full bg-red-50 border border-red-100 flex items-center justify-center">
                         <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 1.5l5 5M6.5 1.5l-5 5" stroke="#ef4444" strokeWidth="1.3" strokeLinecap="round" /></svg>
                       </div>
-                      Skip
+                      {t('flashcards.skip')}
                     </div>
-                    <span>Tap to flip</span>
+                    <span>{t('flashcards.tapToFlipShort')}</span>
                     <div className="flex items-center gap-1.5">
-                      Know it
+                      {t('flashcards.knowIt')}
                       <div className="w-5 h-5 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
                         <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3 5.5L6.5 2" stroke="#22c55e" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
                       </div>
@@ -642,7 +680,7 @@ export default function Flashcards({
                           <path d="M5 5l12 12M17 5L5 17" stroke="#ef4444" strokeWidth="2.4" strokeLinecap="round" />
                         </svg>
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 500, color: '#ef4444' }}>Skip</span>
+                      <span style={{ fontSize: 11, fontWeight: 500, color: '#ef4444' }}>{t('flashcards.skip')}</span>
                     </button>
 
                     <button className="flex flex-col items-center gap-1.5 group">
@@ -652,7 +690,7 @@ export default function Flashcards({
                           <path d="M2 7.5L4 5M2 7.5L4 10" stroke="#a1a1aa" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </div>
-                      <span style={{ fontSize: 10, color: '#a1a1aa' }}>Flip on card</span>
+                      <span style={{ fontSize: 10, color: '#a1a1aa' }}>{t('flashcards.flipOnCard')}</span>
                     </button>
 
                     <button onClick={() => handleAction('right')} className="flex flex-col items-center gap-1.5 group active:scale-95 transition-transform">
@@ -661,15 +699,15 @@ export default function Flashcards({
                           <path d="M4 11.5L9 16.5L18 6" stroke="#22c55e" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 500, color: '#22c55e' }}>Know it</span>
+                      <span style={{ fontSize: 11, fontWeight: 500, color: '#22c55e' }}>{t('flashcards.knowIt')}</span>
                     </button>
                   </div>
                 )}
 
                 <div style={{ marginTop: 14, fontSize: 10, color: '#d4d4d8', display: 'flex', gap: 16 }}>
-                  <span>← Skip</span>
-                  <span>Tap = Flip</span>
-                  <span>→ Know it</span>
+                  <span>{t('flashcards.gestureSkip')}</span>
+                  <span>{t('flashcards.gestureFlip')}</span>
+                  <span>{t('flashcards.gestureKnow')}</span>
                 </div>
               </>
             )}

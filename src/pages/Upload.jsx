@@ -7,7 +7,7 @@ import { validateUploadFile } from '../../shared/uploadValidation.js'
 
 export default function Upload({
   onOpenSidebar, refreshAppData, setSelectedDocumentId, setScreen }) {
-  const { t } = useT()
+  const { t, lang } = useT()
   const fileInputRef = useRef(null)
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -61,6 +61,7 @@ export default function Upload({
             await quizApi.preGenerate(result.document.id, {
               count: 5,
               type: 'mcq',
+              lang,
             })
           } catch {
             // Background preparation is best-effort.
@@ -70,6 +71,7 @@ export default function Upload({
             await quizApi.preGenerate(result.document.id, {
               count: 50,
               type: 'flashcard',
+              lang,
             })
           } catch {
             // Background preparation is best-effort.

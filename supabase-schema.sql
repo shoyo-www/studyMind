@@ -47,6 +47,7 @@ create table if not exists public.quizzes (
   id uuid primary key default extensions.uuid_generate_v4(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   document_id uuid not null references public.documents(id) on delete cascade,
+  language text not null default 'en' check (language in ('en', 'hi')),
   topic text,
   type text not null default 'mcq' check (type in ('mcq', 'truefalse', 'flashcard')),
   questions jsonb not null default '[]'::jsonb,

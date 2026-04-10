@@ -7,15 +7,27 @@ import { quizApi } from '../lib/api'
 const LABELS = ['A', 'B', 'C', 'D']
 const QUIZ_QUESTION_COUNT = 20
 
-function normalizeQuestions(questions = []) {
+function getQuizLanguageDefaults(lang = 'en') {
+  return {
+    untitledQuestion: lang === 'hi' ? 'बिना शीर्षक का प्रश्न' : 'Untitled question',
+    generalTopic: lang === 'hi' ? 'सामान्य' : 'General',
+    mediumDifficulty: lang === 'hi' ? 'मध्यम' : 'medium',
+    trueLabel: lang === 'hi' ? 'सही' : 'True',
+    falseLabel: lang === 'hi' ? 'गलत' : 'False',
+  }
+}
+
+function normalizeQuestions(questions = [], lang = 'en') {
+  const defaults = getQuizLanguageDefaults(lang)
+
   return questions.map((question) => {
-    const options = Array.isArray(question?.options) ? question.options : ['True', 'False']
+    const options = Array.isArray(question?.options) ? question.options : [defaults.trueLabel, defaults.falseLabel]
 
     return {
-      q: question?.question || question?.front || 'Untitled question',
+      q: question?.question || question?.front || defaults.untitledQuestion,
       opts: options,
-      topic: question?.topic || 'General',
-      difficulty: question?.difficulty || 'medium',
+      topic: question?.topic || defaults.generalTopic,
+      difficulty: question?.difficulty || defaults.mediumDifficulty,
       correct: Number.isInteger(question?.correct)
         ? question.correct
         : question?.correct === true
@@ -39,14 +51,15 @@ function normalizeSavedAnswers(savedAnswers = [], totalQuestions = 0) {
   })
 }
 
-function getRecommendedReviewTopic(questions = [], answers = []) {
+function getRecommendedReviewTopic(questions = [], answers = [], lang = 'en') {
   const wrongTopicCounts = new Map()
+  const defaults = getQuizLanguageDefaults(lang)
 
   questions.forEach((question, index) => {
     const answer = answers[index]
     const topic = `${question?.topic || ''}`.trim()
 
-    if (!topic || topic === 'General' || answer === null || answer === undefined) {
+    if (!topic || topic === defaults.generalTopic || topic === 'General' || answer === null || answer === undefined) {
       return
     }
 
@@ -70,7 +83,7 @@ export default function Quiz({
   clearStudyFocus,
   setScreen,
 }) {
-  const { t } = useT()
+  const { t, lang } = useT()
   const [quiz, setQuiz] = useState(null)
   const [questions, setQuestions] = useState([])
   const [answers, setAnswers] = useState([])
@@ -87,16 +100,19 @@ export default function Quiz({
   const currentQuestion = questions[qIdx]
   const selected = answers[qIdx] ?? null
   const score = getScore(questions, answers)
-  const recommendedReviewTopic = getRecommendedReviewTopic(questions, answers) || focusedTopic
+  const recommendedReviewTopic = getRecommendedReviewTopic(questions, answers, lang) || focusedTopic
   const answeredCount = answers.filter((answer) => answer !== null && answer !== undefined).length
   const pct = questions.length ? Math.round(((qIdx + 1) / questions.length) * 100) : 0
   const activeDocumentIsPdf = activeDocument?.mime_type === 'application/pdf'
   const showLoader = loading
   const loaderSubtitle = pending
-    ? 'Checking whether your latest quiz is ready'
+    ? t('quiz.checkingTitle')
     : questions.length
-      ? 'Refreshing your quiz'
-      : `Generating your ${focusedTopic ? `${focusedTopic} ` : ''}${QUIZ_QUESTION_COUNT}-question quiz`
+      ? t('quiz.checkingTitle')
+      : t('quiz.preparingSub', {
+          topicPrefix: focusedTopic ? `${focusedTopic} ` : '',
+          count: QUIZ_QUESTION_COUNT,
+        })
 
   function clearQuizState({ keepError = false } = {}) {
     setQuiz(null)
@@ -113,7 +129,7 @@ export default function Quiz({
   function applyReadyQuiz(result, options = {}) {
     const { restoreProgress = false } = options
     const nextQuiz = result?.quiz || null
-    const nextQuestions = normalizeQuestions(result?.questions || nextQuiz?.questions || [])
+    const nextQuestions = normalizeQuestions(result?.questions || nextQuiz?.questions || [], lang)
     const nextAnswers = restoreProgress
       ? normalizeSavedAnswers(nextQuiz?.answers || [], nextQuestions.length)
       : Array(nextQuestions.length).fill(null)
@@ -135,7 +151,7 @@ export default function Quiz({
     if (!documentId) return
 
     try {
-      const result = await quizApi.getLatest(documentId, { type: 'mcq', topic: focusedTopic || undefined, resumeOnly: true })
+      const result = await quizApi.getLatest(documentId, { type: 'mcq', topic: focusedTopic || undefined, lang, resumeOnly: true })
       if (result?.quiz && (result?.questions?.length || result?.quiz?.questions?.length)) {
         applyReadyQuiz(result, { restoreProgress: true })
         return true
@@ -157,7 +173,7 @@ export default function Quiz({
     }
 
     try {
-      const result = await quizApi.getLatest(documentId, { type: 'mcq', topic: focusedTopic || undefined })
+      const result = await quizApi.getLatest(documentId, { type: 'mcq', topic: focusedTopic || undefined, lang })
       const status = result?.status || result?.quiz?.status || 'missing'
 
       if (status === 'ready' && (result?.questions?.length || result?.quiz?.questions?.length)) {
@@ -175,7 +191,7 @@ export default function Quiz({
       }
 
       if (status === 'failed') {
-        setError(result?.quiz?.error_message || 'Automatic quiz generation failed. Generate a new quiz to try again.')
+        setError(result?.quiz?.error_message || t('quiz.failed'))
         return
       }
 
@@ -196,7 +212,7 @@ export default function Quiz({
 
     if (!activeDocumentIsPdf) {
       clearQuizState({ keepError: true })
-      setError('AI quiz generation currently supports PDF documents only.')
+      setError(t('quiz.pdfOnly'))
       return
     }
 
@@ -209,6 +225,7 @@ export default function Quiz({
         count: QUIZ_QUESTION_COUNT,
         type: 'mcq',
         topic: focusedTopic || null,
+        lang,
       })
 
       if ((result?.status || result?.quiz?.status) === 'pending') {
@@ -282,7 +299,7 @@ export default function Quiz({
 
     if (!activeDocumentId || !activeDocumentIsPdf) {
       if (activeDocument && !activeDocumentIsPdf) {
-        setError('AI quiz generation currently supports PDF documents only.')
+        setError(t('quiz.pdfOnly'))
       }
       return
     }
@@ -304,7 +321,7 @@ export default function Quiz({
     return () => {
       cancelled = true
     }
-  }, [activeDocumentId, activeDocument?.mime_type, focusedTopic])
+  }, [activeDocumentId, activeDocument?.mime_type, focusedTopic, lang])
 
   useEffect(() => {
     if (!pending || !activeDocumentId) return
@@ -314,7 +331,7 @@ export default function Quiz({
     }, 5000)
 
     return () => clearInterval(intervalId)
-  }, [pending, activeDocumentId])
+  }, [pending, activeDocumentId, lang])
 
   useEffect(() => () => {
     if (saveTimeoutRef.current) {
@@ -347,28 +364,28 @@ export default function Quiz({
     <div className="relative flex flex-col flex-1 min-h-0">
       <TopBar
         title={activeDocument ? `${t('quiz.title')} — ${activeDocument.title}` : t('quiz.title')}
-        subtitle={activeDocument ? (focusedTopic ? `${t('quiz.subtitle')} · Focus: ${focusedTopic}` : t('quiz.subtitle')) : 'Select a document to generate a quiz.'}
+        subtitle={activeDocument ? (focusedTopic ? `${t('quiz.subtitle')} · ${t('quiz.focusedOn')}: ${focusedTopic}` : t('quiz.subtitle')) : t('quiz.selectDocument')}
         action={(
           <button
             onClick={pending ? () => loadLatestQuiz(activeDocumentId) : generateQuiz}
             disabled={!activeDocument || loading || checkingExisting || (!activeDocumentIsPdf && !pending)}
             className="text-xs px-3.5 py-2 border border-zinc-200 rounded-lg text-zinc-500 hover:bg-zinc-50 transition-colors disabled:opacity-50"
           >
-            {pending ? 'Check status' : `Generate ${QUIZ_QUESTION_COUNT}-question quiz`}
+            {pending ? t('quiz.checkStatus') : t('quiz.generateCta', { count: QUIZ_QUESTION_COUNT })}
           </button>
         )}
       />
       <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 sm:py-7 max-w-2xl w-full mx-auto">
         {focusedTopic && (
           <div className="mb-4 rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm text-violet-800">
-            <div className="font-semibold mb-1">Focused practice is on</div>
+            <div className="font-semibold mb-1">{t('quiz.focusedOn')}</div>
             <div className="flex flex-wrap items-center gap-2">
               <span>{focusedTopic}</span>
               <button
                 onClick={clearStudyFocus}
                 className="text-xs px-2.5 py-1 rounded-full border border-violet-200 bg-white text-violet-600 hover:bg-violet-100 transition-colors"
               >
-                Clear focus
+                {t('quiz.clearFocus')}
               </button>
             </div>
           </div>
@@ -401,32 +418,35 @@ export default function Quiz({
 
         {!documents.length ? (
           <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
-            Upload a document first to generate quizzes from your notes.
+            {t('quiz.uploadFirst')}
           </div>
         ) : !activeDocumentIsPdf ? (
           <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
-            AI quiz generation currently supports PDF documents only.
+            {t('quiz.pdfOnly')}
           </div>
         ) : checkingExisting ? (
           <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-center">
             <div className="w-11 h-11 rounded-full border-4 border-zinc-100 border-t-violet-500 animate-spin mx-auto mb-4" />
-            <div className="text-base font-medium text-zinc-800 mb-2">Checking your latest quiz</div>
+            <div className="text-base font-medium text-zinc-800 mb-2">{t('quiz.checkingTitle')}</div>
             <p className="text-sm text-zinc-500 leading-relaxed">
-              We&apos;re loading any saved or auto-generated quiz for this document before showing the generate option.
+              {t('quiz.checkingSub')}
             </p>
           </div>
         ) : pending ? (
           <div className="rounded-2xl border border-violet-100 bg-white px-6 py-10 text-center">
             <div className="w-11 h-11 rounded-full border-4 border-violet-100 border-t-violet-500 animate-spin mx-auto mb-4" />
-            <div className="text-base font-medium text-zinc-800 mb-2">Your quiz is being prepared</div>
+            <div className="text-base font-medium text-zinc-800 mb-2">{t('quiz.preparingTitle')}</div>
             <p className="text-sm text-zinc-500 leading-relaxed mb-5">
-              We&apos;re generating your {focusedTopic ? `${focusedTopic} ` : ''}{QUIZ_QUESTION_COUNT}-question quiz now. This page will refresh automatically every few seconds.
+              {t('quiz.preparingSub', {
+                topicPrefix: focusedTopic ? `${focusedTopic} ` : '',
+                count: QUIZ_QUESTION_COUNT,
+              })}
             </p>
             <button
               onClick={() => loadLatestQuiz(activeDocumentId)}
               className="px-4 py-2 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors"
             >
-              Refresh now
+              {t('quiz.refreshNow')}
             </button>
           </div>
         ) : !questions.length ? (
@@ -438,18 +458,18 @@ export default function Quiz({
                   <path d="M7 7h6M7 10h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
               </div>
-              <div className="text-base font-medium text-zinc-800 mb-2">Ready for a fresh quiz?</div>
+              <div className="text-base font-medium text-zinc-800 mb-2">{t('quiz.emptyTitle')}</div>
               <div className="mb-5">
                 {focusedTopic
-                  ? `Generate a fresh ${QUIZ_QUESTION_COUNT}-question quiz on ${focusedTopic} from the selected document.`
-                  : `Generate a fresh ${QUIZ_QUESTION_COUNT}-question quiz from the selected document to start practising.`}
+                  ? t('quiz.emptySubTopic', { count: QUIZ_QUESTION_COUNT, topic: focusedTopic })
+                  : t('quiz.emptySub', { count: QUIZ_QUESTION_COUNT })}
               </div>
               <button
                 onClick={generateQuiz}
                 disabled={loading || !activeDocumentIsPdf}
                 className="px-5 py-2.5 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50"
               >
-                Generate {QUIZ_QUESTION_COUNT}-question quiz
+                {t('quiz.generateCta', { count: QUIZ_QUESTION_COUNT })}
               </button>
             </div>
           </div>
@@ -465,15 +485,15 @@ export default function Quiz({
               <div className={`h-full rounded-full transition-all duration-700 ${score / questions.length >= 0.7 ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${(score / questions.length) * 100}%` }} />
             </div>
             <div className="mb-8 rounded-2xl border border-zinc-200 bg-white px-5 py-4 text-left">
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Next Best Step</div>
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">{t('quiz.nextBestStep')}</div>
               <div className="text-sm text-zinc-700 leading-relaxed">
                 {recommendedReviewTopic
                   ? score / questions.length >= 0.7
-                    ? `Nice work. Lock in ${recommendedReviewTopic} with flashcards, then move to a full mock test.`
-                    : `Your weakest area in this round was ${recommendedReviewTopic}. Review it with flashcards, then retry a focused quiz.`
+                    ? t('quiz.resultStepGoodTopic', { topic: recommendedReviewTopic })
+                    : t('quiz.resultStepWeakTopic', { topic: recommendedReviewTopic })
                   : score / questions.length >= 0.7
-                    ? 'Nice work. You are ready to step up to a full mock test or move forward in the roadmap.'
-                    : 'Review the trickiest concepts with flashcards, then take another quiz to strengthen them.'}
+                    ? t('quiz.resultStepGood')
+                    : t('quiz.resultStepWeak')}
               </div>
             </div>
             <div className="flex gap-3 justify-center">
@@ -488,7 +508,7 @@ export default function Quiz({
                 }}
                 className="px-5 py-2.5 border border-zinc-200 text-zinc-600 text-sm rounded-lg hover:bg-zinc-50 transition-colors"
               >
-                Retry same quiz
+                {t('quiz.retrySame')}
               </button>
             </div>
             <div className="flex flex-wrap gap-3 justify-center mt-4">
@@ -498,13 +518,13 @@ export default function Quiz({
                     onClick={() => openStudyFocus?.({ documentId: activeDocumentId, topic: recommendedReviewTopic, screen: 'flashcards', origin: 'quiz_result' })}
                     className="px-5 py-2.5 border border-violet-200 bg-violet-50 text-violet-700 text-sm rounded-lg hover:bg-violet-100 transition-colors"
                   >
-                    Review {recommendedReviewTopic}
+                    {t('quiz.reviewTopic', { topic: recommendedReviewTopic })}
                   </button>
                   <button
                     onClick={() => openStudyFocus?.({ documentId: activeDocumentId, topic: recommendedReviewTopic, screen: 'quiz', origin: 'quiz_result' })}
                     className="px-5 py-2.5 border border-zinc-200 text-zinc-600 text-sm rounded-lg hover:bg-zinc-50 transition-colors"
                   >
-                    Retry quiz on {recommendedReviewTopic}
+                    {t('quiz.retryTopic', { topic: recommendedReviewTopic })}
                   </button>
                 </>
               )}
@@ -515,7 +535,7 @@ export default function Quiz({
                 }}
                 className="px-5 py-2.5 border border-zinc-200 text-zinc-600 text-sm rounded-lg hover:bg-zinc-50 transition-colors"
               >
-                Take mock test
+                {t('quiz.takeMock')}
               </button>
             </div>
           </div>
@@ -553,7 +573,7 @@ export default function Quiz({
             </div>
 
             <div className="bg-white border border-zinc-100 rounded-2xl p-6 mb-4">
-              <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300 mb-3">Question {qIdx + 1}</div>
+              <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300 mb-3">{t('quiz.question', { current: qIdx + 1, total: questions.length })}</div>
               <p className="text-base font-medium text-zinc-800 leading-relaxed mb-6">{currentQuestion.q}</p>
               <div className="flex flex-col gap-2">
                 {currentQuestion.opts.map((option, index) => (
@@ -577,7 +597,7 @@ export default function Quiz({
                 </>
               ) : (
                 <p className="text-sm text-zinc-500 leading-relaxed mb-4">
-                  Choose one option to lock in your answer and continue.
+                  {t('quiz.chooseAnswer')}
                 </p>
               )}
 
@@ -587,14 +607,14 @@ export default function Quiz({
                   disabled={qIdx === 0}
                   className="px-4 py-2 border border-zinc-200 text-zinc-600 text-sm rounded-lg hover:bg-zinc-50 transition-colors disabled:opacity-50"
                 >
-                  Previous
+                  {t('quiz.previous')}
                 </button>
                 <button
                   onClick={next}
                   disabled={selected === null}
                   className="px-5 py-2 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50"
                 >
-                  {qIdx + 1 < questions.length ? 'Next question' : 'See results'}
+                  {qIdx + 1 < questions.length ? t('quiz.next') : t('quiz.seeResults')}
                 </button>
               </div>
             </div>
