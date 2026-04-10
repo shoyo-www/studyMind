@@ -134,12 +134,12 @@ export const documentsApi = {
 
   // Load extracted document text only when a browser-side AI fallback needs it
   getText: (documentId) =>
-    apiFetch(`/documents/text?documentId=${encodeURIComponent(documentId)}`),
+    apiFetch(`/documents?mode=text&documentId=${encodeURIComponent(documentId)}`),
 
   generateRoadmap: (documentId) =>
-    apiFetch('/documents/analyze', {
+    apiFetch('/documents', {
       method: 'POST',
-      body: JSON.stringify({ documentId }),
+      body: JSON.stringify({ action: 'analyze', documentId }),
     }),
 }
 
