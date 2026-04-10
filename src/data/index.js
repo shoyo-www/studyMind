@@ -72,6 +72,7 @@ export const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard',       section: 'Overview'  },
   { id: 'upload',    label: 'Upload Material',  section: null        },
   { id: 'roadmap',   label: 'Roadmap',          section: 'Learn'     },
+  { id: 'missions',  label: 'Daily Missions',   section: null        },
   { id: 'quiz',      label: 'Quiz & Practice',  section: null        },
   { id: 'flashcards',label: 'Flashcards',       section: null        },
   { id: 'mocktest',  label: 'Mock Test',         section: null        },

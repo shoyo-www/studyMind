@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import AppLoader from '../components/AppLoader'
 import TopBar from '../components/TopBar'
 import { mockTestApi } from '../lib/api'
+import { useResolvedStudyTopic } from '../lib/studyStage'
 
 const TYPE_LABEL = {
   short_answer: 'Short Answer',
@@ -45,16 +46,24 @@ function useCountdown(totalSecs, onExpire) {
 // ════════════════════════════════════════════════════════════════════
 // PHASE 1 — Setup (with past tests + resume)
 // ════════════════════════════════════════════════════════════════════
-function SetupPhase({ documents, activeDocument, onGenerate, onResume, loading, error }) {
+function SetupPhase({ documents, activeDocument, setSelectedDocumentId, studyFocus, onGenerate, onResume, loading, error }) {
   const [docId, setDocId] = useState(activeDocument?.mime_type === 'application/pdf' ? activeDocument.id : documents[0]?.id || '')
   const [pastTests, setPastTests]   = useState([])
   const [loadingList, setLoadingList] = useState(false)
 
   const pdfs        = documents.filter(d => d.mime_type === 'application/pdf')
   const selectedDoc = pdfs.find(d => d.id === docId)
+  const {
+    focusTopic,
+    stageDayNumber,
+    isRoadmapFocus,
+  } = useResolvedStudyTopic({
+    document: selectedDoc || null,
+    studyFocus,
+  })
 
   useEffect(() => {
-    if (activeDocument?.mime_type === 'application/pdf') {
+    if (activeDocument?.mime_type === 'application/pdf' && (!docId || !pdfs.some((doc) => doc.id === docId))) {
       setDocId(activeDocument.id)
       return
     }
@@ -77,7 +86,11 @@ function SetupPhase({ documents, activeDocument, onGenerate, onResume, loading, 
     load()
   }, [])
 
-  const existingTest = pastTests.find(t => t.documentId === docId) || null
+  const existingTest = pastTests.find((test) => (
+    test.documentId === docId
+    && (test.focusTopic || '') === (focusTopic || '')
+    && (Number(test.stageDayNumber) || null) === (Number(stageDayNumber) || null)
+  )) || null
 
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-8">
@@ -105,7 +118,10 @@ function SetupPhase({ documents, activeDocument, onGenerate, onResume, loading, 
                       ? { background: '#EEF2FF', borderColor: '#A5B4FC' }
                       : { background: '#FAFAF9', borderColor: '#E4E4E7' }}>
                     <input type="radio" name="doc" value={doc.id} checked={docId === doc.id}
-                      onChange={() => setDocId(doc.id)} className="accent-violet-600" />
+                      onChange={() => {
+                        setDocId(doc.id)
+                        setSelectedDocumentId?.(doc.id)
+                      }} className="accent-violet-600" />
                     <div className="min-w-0">
                       <div className="text-sm font-medium text-zinc-800 truncate">{doc.title}</div>
                       <div className="text-xs text-zinc-400">{doc.subject || 'General'}{doc.total_pages ? ` · ${doc.total_pages} pages` : ''}</div>
@@ -119,8 +135,9 @@ function SetupPhase({ documents, activeDocument, onGenerate, onResume, loading, 
               <div className="bg-violet-50 border border-violet-100 rounded-2xl px-5 py-4 flex flex-wrap gap-5 text-sm">
                 {[
                   { k: 'Document', v: selectedDoc.title },
-                  { k: 'Duration', v: '3 hrs' },
-                  { k: 'Marks',    v: '100 marks' },
+                  { k: 'Topic', v: isRoadmapFocus && stageDayNumber ? `Day ${stageDayNumber} · ${focusTopic}` : focusTopic || 'Current roadmap topic' },
+                  { k: 'Duration', v: '1 hr' },
+                  { k: 'Questions', v: 'Up to 15' },
                 ].map(i => (
                   <div key={i.k}>
                     <div className="text-[10px] uppercase tracking-widest text-violet-400 font-medium mb-0.5">{i.k}</div>
@@ -149,13 +166,13 @@ function SetupPhase({ documents, activeDocument, onGenerate, onResume, loading, 
                   </button>
                 </div>
                 <div className="mt-3 text-xs text-amber-700">
-                  Only one mock test is generated per uploaded PDF. We&apos;ll reopen the same test for this document instead of creating another one.
+                  This topic-stage mock test is already ready. We&apos;ll reopen the same paper for this roadmap stage instead of generating a duplicate.
                 </div>
               </div>
             )}
 
             <button
-              onClick={() => onGenerate({ documentId: docId })}
+              onClick={() => onGenerate({ documentId: docId, focusTopic, stageDayNumber })}
               disabled={loading || loadingList || !docId || Boolean(existingTest)}
               className="w-full py-4 rounded-2xl text-white font-semibold text-base transition-all disabled:opacity-50"
               style={{ background: loading ? '#A5B4FC' : '#6c63ff' }}>
@@ -166,7 +183,7 @@ function SetupPhase({ documents, activeDocument, onGenerate, onResume, loading, 
                   </svg>
                   Generating question paper…
                 </span>
-              ) : loadingList ? 'Checking existing mock tests…' : existingTest ? 'Mock test already created for this PDF' : 'Generate Mock Test'}
+              ) : loadingList ? 'Checking existing mock tests…' : existingTest ? 'Mock test already created for this stage' : 'Generate Topic Mock Test'}
             </button>
 
           </div>
@@ -741,6 +758,8 @@ export default function MockTest({
   onOpenSidebar,
   documents = [],
   activeDocument = null,
+  setSelectedDocumentId,
+  studyFocus,
   openStudyFocus,
 }) {
   const [phase,      setPhase]      = useState('setup')
@@ -765,7 +784,10 @@ export default function MockTest({
   async function handleGenerate(opts) {
     setGenerating(true); setError('')
     try {
-      const data = await mockTestApi.generate(opts.documentId)
+      const data = await mockTestApi.generate(opts.documentId, {
+        focusTopic: opts.focusTopic || '',
+        stageDayNumber: opts.stageDayNumber || null,
+      })
       startExam(data)
     } catch (e) {
       setError(e.message || 'Failed to generate question paper. Please try again.')
@@ -859,8 +881,8 @@ export default function MockTest({
     results: 'Results',
   }
   const SUBTITLES = {
-    setup:   'Generate one mock test for any uploaded PDF and reuse the same paper whenever you return.',
-    exam:    `${questions.length} questions · ${mockTest?.totalMarks} marks · ${mockTest?.durationMinutes} min`,
+    setup:   'Generate a topic-wise mock test from your current roadmap stage and move to the next one after you finish that stage.',
+    exam:    `${questions.length} questions · ${mockTest?.totalMarks} marks · ${mockTest?.durationMinutes} min${mockTest?.focusTopic ? ` · ${mockTest.focusTopic}` : ''}`,
     marking: markingState ? `${Math.max(Number(markingState.progressDone || 0), 0)}/${Math.max(Number(markingState.progressTotal || 0), 0)} answers marked` : 'Your answers are being evaluated in the background.',
     results: result ? `${result.marksObtained}/${result.totalMarks} · Grade ${result.grade}` : '',
   }
@@ -879,6 +901,8 @@ export default function MockTest({
         <SetupPhase
           documents={documents}
           activeDocument={activeDocument}
+          setSelectedDocumentId={setSelectedDocumentId}
+          studyFocus={studyFocus}
           onGenerate={handleGenerate}
           onResume={handleResume}
           loading={generating}

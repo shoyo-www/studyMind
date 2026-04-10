@@ -4,6 +4,7 @@ import { stripReasoningBlocks } from '../lib/chat'
 import GeneratingIndicator from './GeneratingIndicator'
 
 const THREAD_CACHE = {}
+const CHAT_INPUT_MAX_HEIGHT = 88
 
 function buildGreeting(document) {
   if (!document) {
@@ -82,6 +83,15 @@ export default function ChatPanel({ activeDocument = null }) {
   useEffect(() => {
     setInput('')
   }, [activeDocument?.id])
+
+  useEffect(() => {
+    const textarea = inputRef.current
+    if (!textarea) return
+
+    textarea.style.height = '0px'
+    textarea.style.height = `${Math.min(textarea.scrollHeight, CHAT_INPUT_MAX_HEIGHT)}px`
+    textarea.style.overflowY = textarea.scrollHeight > CHAT_INPUT_MAX_HEIGHT ? 'auto' : 'hidden'
+  }, [input, activeDocument?.id, open])
 
   useEffect(() => {
     Object.keys(THREAD_CACHE).forEach((key) => delete THREAD_CACHE[key])
@@ -372,10 +382,10 @@ export default function ChatPanel({ activeDocument = null }) {
         )}
 
         <div
-          className="flex items-center gap-2 px-4 py-3 shrink-0 bg-white"
+          className="flex items-end gap-2 px-4 py-3 shrink-0 bg-white"
           style={{ borderTop: '1px solid #E4E4E7' }}
         >
-          <input
+          <textarea
             ref={inputRef}
             value={input}
             onChange={(event) => setInput(event.target.value)}
@@ -393,8 +403,14 @@ export default function ChatPanel({ activeDocument = null }) {
                   : `Ask about ${activeDocument.title}...`
             }
             disabled={!canChat || currentLoading}
-            className="flex-1 text-[13px] text-zinc-700 placeholder-zinc-300 outline-none"
-            style={{ border: 'none', background: 'transparent' }}
+            rows={2}
+            className="flex-1 text-[13px] leading-5 text-zinc-700 placeholder-zinc-300 outline-none resize-none"
+            style={{
+              border: 'none',
+              background: 'transparent',
+              minHeight: 48,
+              maxHeight: CHAT_INPUT_MAX_HEIGHT,
+            }}
           />
 
           <button

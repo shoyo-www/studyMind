@@ -3,6 +3,7 @@ import AppLoader from '../components/AppLoader'
 import TopBar from '../components/TopBar'
 import { useT } from '../i18n'
 import { quizApi } from '../lib/api'
+import { useResolvedStudyTopic } from '../lib/studyStage'
 
 const DEFAULT_FLASHCARD_COUNT = 50
 const DIFF_DOT = { easy: '#22c55e', medium: '#f59e0b', hard: '#ef4444' }
@@ -241,7 +242,15 @@ export default function Flashcards({
   const [error, setError] = useState('')
 
   const activeDocumentId = activeDocument?.id || null
-  const focusedTopic = studyFocus?.documentId === activeDocumentId ? `${studyFocus?.topic || ''}`.trim() : ''
+  const {
+    focusTopic: focusedTopic,
+    isManualFocus,
+    isRoadmapFocus,
+    stageDayNumber,
+  } = useResolvedStudyTopic({
+    document: activeDocument,
+    studyFocus,
+  })
   const activeDocumentIsPdf = activeDocument?.mime_type === 'application/pdf'
   const cardCopy = {
     promptLabel: t('flashcards.promptLabel'),
@@ -478,15 +487,19 @@ export default function Flashcards({
       <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start pt-6 px-6 bg-zinc-50">
         {focusedTopic && (
           <div className="w-full max-w-md mb-4 rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm text-violet-800">
-            <div className="font-semibold mb-1">{t('flashcards.focusedOn')}</div>
+            <div className="font-semibold mb-1">
+              {isRoadmapFocus && stageDayNumber ? `Current roadmap stage · Day ${stageDayNumber}` : t('flashcards.focusedOn')}
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <span>{focusedTopic}</span>
-              <button
-                onClick={clearStudyFocus}
-                className="text-xs px-2.5 py-1 rounded-full border border-violet-200 bg-white text-violet-600 hover:bg-violet-100 transition-colors"
-              >
-                {t('flashcards.clearFocus')}
-              </button>
+              {isManualFocus && (
+                <button
+                  onClick={clearStudyFocus}
+                  className="text-xs px-2.5 py-1 rounded-full border border-violet-200 bg-white text-violet-600 hover:bg-violet-100 transition-colors"
+                >
+                  {t('flashcards.clearFocus')}
+                </button>
+              )}
             </div>
           </div>
         )}

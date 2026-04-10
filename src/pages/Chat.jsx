@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import GeneratingIndicator from '../components/GeneratingIndicator'
 import TopBar from '../components/TopBar'
 import { useT } from '../i18n'
 import { stripReasoningBlocks } from '../lib/chat'
 import { chatApi } from '../lib/api'
+
+const CHAT_INPUT_MAX_HEIGHT = 88
 
 export default function Chat({
   onOpenSidebar,
@@ -17,6 +19,7 @@ export default function Chat({
   const [input,     setInput]     = useState('')
   const [loading,   setLoading]   = useState(false)
   const [error,     setError]     = useState('')
+  const inputRef = useRef(null)
 
   const pdfs = documents.filter(d => d.mime_type === 'application/pdf')
 
@@ -49,6 +52,15 @@ export default function Chat({
     'Explain the main topic simply',
     'What topics are covered?',
   ]
+
+  useEffect(() => {
+    const textarea = inputRef.current
+    if (!textarea) return
+
+    textarea.style.height = '0px'
+    textarea.style.height = `${Math.min(textarea.scrollHeight, CHAT_INPUT_MAX_HEIGHT)}px`
+    textarea.style.overflowY = textarea.scrollHeight > CHAT_INPUT_MAX_HEIGHT ? 'auto' : 'hidden'
+  }, [input, activeDocument?.id])
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -183,13 +195,21 @@ export default function Chat({
               )}
 
               {/* Input */}
-              <div className="px-4 sm:px-6 py-4 border-t border-zinc-100 bg-white flex gap-2 items-center shrink-0">
-                <input
+              <div className="px-4 sm:px-6 py-4 border-t border-zinc-100 bg-white flex gap-2 items-end shrink-0">
+                <textarea
+                  ref={inputRef}
                   value={input}
                   onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault()
+                      send()
+                    }
+                  }}
                   placeholder={`Ask anything about ${activeDocument.title}…`}
-                  className="flex-1 text-sm text-zinc-700 placeholder-zinc-300 outline-none border border-zinc-200 rounded-xl px-4 py-2.5 focus:border-violet-300 transition-colors"
+                  rows={2}
+                  className="flex-1 text-sm leading-6 text-zinc-700 placeholder-zinc-300 outline-none border border-zinc-200 rounded-xl px-4 py-3 focus:border-violet-300 transition-colors resize-none"
+                  style={{ minHeight: 52, maxHeight: CHAT_INPUT_MAX_HEIGHT }}
                 />
                 <button
                   onClick={() => send()}

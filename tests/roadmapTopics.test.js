@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildRoadmapTopicsFromText } from '../api/_roadmapTopics.js'
+import { buildRoadmapTopicsFromText } from '../server/roadmapTopics.js'
 
 test('buildRoadmapTopicsFromText extracts ordered topics from headings', () => {
   const text = [

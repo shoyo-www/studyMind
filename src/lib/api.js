@@ -215,6 +215,42 @@ export const progressApi = {
   get: () => apiFetch('/progress'),
 }
 
+// ── Study Plan ─────────────────────────────────────────────────────
+export const studyPlanApi = {
+  get: (documentId) =>
+    apiFetch(`/study-plan?documentId=${encodeURIComponent(documentId)}`),
+
+  generatePlan: (documentId, options = {}) =>
+    apiFetch('/study-plan', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'generatePlan',
+        documentId,
+        ...options,
+      }),
+    }),
+
+  generateMission: (documentId) =>
+    apiFetch('/study-plan', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'generateMission',
+        documentId,
+      }),
+    }),
+
+  submitMission: (sessionId, quickQuizAnswers, miniTestAnswers) =>
+    apiFetch('/study-plan', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        action: 'submitMission',
+        sessionId,
+        quickQuizAnswers,
+        miniTestAnswers,
+      }),
+    }),
+}
+
 // ── Mock Test ──────────────────────────────────────────────────────
 export const mockTestApi = {
   generate: (documentId, options = {}) =>

@@ -6,12 +6,15 @@ import {
   fail,
   getAdminSupabase,
   getClientIp,
+  getCurrentMonthUploadCount,
   ok,
   requireAuth,
   sanitizeFileName,
   setCors,
+  syncProfileUploadCount,
 } from '../server/helpers.js'
 import {
+  sliceDocumentTextForAi,
   extractPdfText,
   isMissingDocumentTextColumnError,
 } from '../server/documentText.js'
@@ -26,13 +29,12 @@ import {
   extractJsonFromText,
   getGeminiClient,
   getGeminiModelName,
-  makeGeminiFilePart,
   runGeminiTask,
   shouldSkipGeminiDueToRecentQuota,
-  uploadPdfToGemini,
 } from '../server/gemini.js'
 
 const AI_SUPPORTED_MIME_TYPES = new Set(['application/pdf'])
+const MAX_UPLOAD_ANALYSIS_TEXT_CHARS = 60_000
 
 export const config = { api: { bodyParser: false } }
 
@@ -88,13 +90,16 @@ export default async function handler(req, res) {
     uploadedTempPath = file.filepath
 
     const supabase = getAdminSupabase()
-    const profile = await ensureProfile(supabase, user)
+    let profile = await ensureProfile(supabase, user)
+    const currentMonthUploads = await getCurrentMonthUploadCount(supabase, user.id)
+
+    profile = await syncProfileUploadCount(supabase, profile, user.id, currentMonthUploads)
 
     const uploadLimit = profile?.plan === 'pro' ? Number.MAX_SAFE_INTEGER : 3
-    if ((profile?.uploads_this_month || 0) >= uploadLimit) {
+    if (currentMonthUploads >= uploadLimit) {
       return fail(res, {
         status: 403,
-        message: `You've used ${profile.uploads_this_month}/${uploadLimit} uploads this month. Upgrade to Pro for unlimited uploads.`,
+        message: `You've used ${currentMonthUploads}/${uploadLimit} uploads this month. Upgrade to Pro for unlimited uploads.`,
       })
     }
 
@@ -142,23 +147,27 @@ export default async function handler(req, res) {
           ? 'Gemini analysis is cooling down after a recent quota response.'
           : 'GEMINI_API_KEY is not configured.'
         console.info(`[Upload metadata extraction skipped] ${reason}`)
+      } else if (!documentText.trim()) {
+        console.info('[Upload metadata extraction skipped] No extracted document text was available for AI analysis.')
       } else {
         try {
           const ai = getGeminiClient()
-          const geminiFile = await uploadPdfToGemini(ai, {
-            buffer: fileBuffer,
-            displayName: safeFileName,
-          })
+          const excerpt = sliceDocumentTextForAi(documentText, MAX_UPLOAD_ANALYSIS_TEXT_CHARS)
 
           const result = await runGeminiTask(() => ai.models.generateContent({
             model: getGeminiModelName(),
-            contents: [
-              { text: 'Analyse this document and return a JSON object with title, subject, totalPages, topics, and summary.' },
-              makeGeminiFilePart(geminiFile),
-            ],
+            contents: [{
+              text: [
+                'Analyse this study document and return a JSON object with title, subject, totalPages, topics, and summary.',
+                'Use only the provided extracted text excerpt.',
+                `Current filename: ${safeFileName}`,
+                `Current extracted topic candidates: ${JSON.stringify(metadata.topics || [])}`,
+                `Extracted text excerpt:\n${excerpt}`,
+              ].join('\n\n'),
+            }],
             config: {
               responseMimeType: 'application/json',
-              systemInstruction: 'Return only valid JSON. topics must be an array of objects with title, estimatedMinutes, and subtopics.',
+              systemInstruction: 'Return only valid JSON. topics must be an array of objects with title, estimatedMinutes, and subtopics. Keep the summary short and specific.',
             },
           }), {
             label: 'Gemini upload analysis',
@@ -216,10 +225,7 @@ export default async function handler(req, res) {
 
     if (documentError) throw documentError
 
-    await supabase
-      .from('profiles')
-      .update({ uploads_this_month: (profile?.uploads_this_month || 0) + 1 })
-      .eq('id', user.id)
+    await syncProfileUploadCount(supabase, profile, user.id, currentMonthUploads + 1)
 
     return ok(res, {
       document,

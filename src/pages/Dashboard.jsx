@@ -50,6 +50,7 @@ export default function Dashboard({
   profile,
   stats,
   documents,
+  activeDocument,
   appLoading,
   appError,
   refreshAppData,
@@ -63,14 +64,16 @@ export default function Dashboard({
 
   useEffect(() => {
     progressApi.get().then(data => {
-      if (data?.weakTopics?.length) setWeakTopics(data.weakTopics)
-      if (data?.mockTestStats)      setMockStats(data.mockTestStats)
+      setWeakTopics(Array.isArray(data?.weakTopics) ? data.weakTopics : [])
+      setMockStats(data?.mockTestStats || null)
       // Predicted score: quiz avg × 0.4 + mock avg × 0.6
       const quizAvg = data?.stats?.bestScore || 0
       const mockAvg = data?.mockTestStats?.avgScore || 0
       if (quizAvg || mockAvg) {
         const weight = mockAvg ? (quizAvg * 0.4 + mockAvg * 0.6) : quizAvg
         setPredictedScore(Math.round(weight))
+      } else {
+        setPredictedScore(null)
       }
     }).catch(() => {})
   }, [documents.length])
@@ -87,6 +90,13 @@ export default function Dashboard({
   const readinessPct = stats?.readinessPct ?? (documents.length ? Math.round(documents.reduce((sum, document) => sum + document.pct_covered, 0) / documents.length) : 0)
   const avgQuizScore = stats?.averageQuizScore ?? 0
   const totalCoveredTopics = documents.reduce((sum, document) => sum + getCoveredTopicCount(document), 0)
+  const focusDocument = activeDocument || documents[0] || null
+  const focusDocumentCoveredTopics = focusDocument ? getCoveredTopicCount(focusDocument) : 0
+  const focusDocumentTopicCount = focusDocument ? getTopicCount(focusDocument) : 0
+  const focusDocumentNextTopic = focusDocument?.topics?.[focusDocumentCoveredTopics]?.title || focusDocument?.topics?.[0]?.title || ''
+  const focusDocumentWeakTopics = focusDocument
+    ? weakTopics.filter((topic) => topic.documentId === focusDocument.id)
+    : []
   const statsCards = [
     { label: t('dashboard.stats.documents'), value: String(stats?.documentCount ?? documents.length), change: `${topicCount} ${t('dashboard.stats.topics').toLowerCase()}` },
     { label: t('dashboard.stats.topics'), value: String(totalCoveredTopics), change: `${topicCount} total` },
@@ -96,40 +106,38 @@ export default function Dashboard({
       value: predictedScore !== null ? `${predictedScore}%` : `${readinessPct}%`,
       change: predictedScore !== null
         ? (predictedScore >= 75 ? 'On track for exam 🎯' : predictedScore >= 50 ? 'Needs improvement' : 'More practice needed')
-        : (documents.length ? `${documents[0].subject || 'General'} focus` : t('common.comingSoon')),
+        : (focusDocument ? `${focusDocument.subject || 'General'} focus` : t('common.comingSoon')),
     },
   ]
 
-  const topDocument = documents[0]
-  const nextTopic = topDocument?.topics?.[getCoveredTopicCount(topDocument)]?.title || topDocument?.topics?.[0]?.title
-  const tasks = documents.length
+  const tasks = focusDocument
     ? [
         {
           color: 'bg-violet-500',
-          text: `${topDocument.title} — ${Math.max(getTopicCount(topDocument) - getCoveredTopicCount(topDocument), 0)} topics left in roadmap`,
+          text: `${focusDocument.title} — ${Math.max(focusDocumentTopicCount - focusDocumentCoveredTopics, 0)} topics left in roadmap`,
           btn: t('common.resume'),
-          onClick: () => openDocument(topDocument.id, 'roadmap'),
+          onClick: () => openDocument(focusDocument.id, 'roadmap'),
           primary: false,
         },
         {
           color: 'bg-emerald-400',
-          text: nextTopic ? `Practice ${nextTopic} from ${topDocument.title}` : `Start a quiz from ${topDocument.title}`,
+          text: focusDocumentNextTopic ? `Practice ${focusDocumentNextTopic} from ${focusDocument.title}` : `Start a quiz from ${focusDocument.title}`,
           btn: t('common.practice'),
-          onClick: () => openDocument(topDocument.id, 'quiz'),
+          onClick: () => openDocument(focusDocument.id, 'quiz'),
           primary: false,
         },
         {
           color: 'bg-sky-400',
-          text: `Review the flashcards deck from ${topDocument.title}`,
+          text: `Review the flashcards deck from ${focusDocument.title}`,
           btn: t('common.review'),
-          onClick: () => openDocument(topDocument.id, 'flashcards'),
+          onClick: () => openDocument(focusDocument.id, 'flashcards'),
           primary: false,
         },
         {
           color: 'bg-amber-400',
-          text: `Open the PDF assistant for ${topDocument.title}`,
+          text: `Open the PDF assistant for ${focusDocument.title}`,
           btn: 'Open',
-          onClick: () => openDocument(topDocument.id),
+          onClick: () => openDocument(focusDocument.id),
           primary: true,
         },
       ]
@@ -175,14 +183,25 @@ export default function Dashboard({
 
         {/* ── Smart Next Step Card ───────────────────────────────── */}
         {documents.length > 0 && (() => {
-          const topWeak  = weakTopics[0]
+          const topWeak  = focusDocumentWeakTopics[0] || null
           const hasQuiz  = (stats?.attemptedQuizCount || 0) > 0
           const hasMock  = mockStats?.submittedCount > 0
 
           // Determine what to show
           let card = null
 
-          if (topWeak && topWeak.score !== null && topWeak.score < 60) {
+          if (focusDocument && focusDocumentCoveredTopics === 0) {
+            card = {
+              emoji: '🗺️',
+              label: 'Start here',
+              bg: '#EEF2FF', border: '#C7D2FE', labelColor: '#4338CA',
+              title: `Your roadmap for ${focusDocument.title} is ready`,
+              subtitle: `Start with ${focusDocumentTopicCount ? `${focusDocumentTopicCount} planned topic${focusDocumentTopicCount === 1 ? '' : 's'}` : 'your first guided study mission'} and build from easy to hard.`,
+              cta: 'Open roadmap →',
+              ctaBg: '#6c63ff',
+              onClick: () => openDocument(focusDocument.id, 'roadmap'),
+            }
+          } else if (topWeak && topWeak.score !== null && topWeak.score < 60) {
             // Weak topic found from quiz history
             card = {
               emoji: '🎯',
@@ -204,7 +223,7 @@ export default function Dashboard({
               subtitle: 'PrepPal will learn your weak topics and guide you from there.',
               cta: 'Start quiz →',
               ctaBg: '#6c63ff',
-              onClick: () => openDocument(documents[0]?.id, 'quiz'),
+              onClick: () => focusDocument ? openDocument(focusDocument.id, 'quiz') : setScreen('quiz'),
             }
           } else if (!hasMock) {
             // Has quizzes but no mock test yet
@@ -233,7 +252,7 @@ export default function Dashboard({
                   : `Need more practice. Your weakest area: ${topWeak?.topic || 'check progress page'}`,
               cta: predictedScore < 75 ? 'Fix weak topics →' : 'Keep practicing →',
               ctaBg: colour,
-              onClick: () => topWeak?.documentId ? openDocument(topWeak.documentId, 'quiz') : setScreen('progress'),
+              onClick: () => topWeak?.documentId ? openDocument(topWeak.documentId, 'quiz') : focusDocument ? openDocument(focusDocument.id, 'roadmap') : setScreen('progress'),
             }
           }
 

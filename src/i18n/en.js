@@ -28,6 +28,7 @@ const en = {
     upload:     'Upload Material',
     chat:       'Chat with Notes',
     roadmap:    'Roadmap',
+    missions:   'Daily Missions',
     quiz:       'Quiz & Practice',
     flashcards: 'Flashcards',
     mocktest:   'Mock Test',

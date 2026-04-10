@@ -2,9 +2,11 @@ import {
   ensureProfile,
   fail,
   getAdminSupabase,
+  getCurrentMonthUploadCount,
   ok,
   requireAuth,
   setCors,
+  syncProfileUploadCount,
 } from '../server/helpers.js'
 
 function getTopicCount(document) {
@@ -45,7 +47,9 @@ export default async function handler(req, res) {
 
     if (req.method !== 'GET') return fail(res, { status: 405, message: 'That action is not available here.' })
 
-    const profile = await ensureProfile(supabase, user)
+    let profile = await ensureProfile(supabase, user)
+    const currentMonthUploads = await getCurrentMonthUploadCount(supabase, user.id)
+    profile = await syncProfileUploadCount(supabase, profile, user.id, currentMonthUploads)
 
     const [{ data: documents, error: documentsError }, { data: quizzes, error: quizzesError }] = await Promise.all([
       supabase

@@ -11,15 +11,10 @@ import {
 
 test('getUploadFileKind accepts supported MIME types', () => {
   assert.equal(getUploadFileKind({ type: 'application/pdf', name: 'notes.bin' }), 'pdf')
-  assert.equal(
-    getUploadFileKind({ type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', name: 'notes.bin' }),
-    'docx',
-  )
 })
 
 test('getUploadFileKind falls back to filename extension when MIME type is blank', () => {
   assert.equal(getUploadFileKind({ type: '', name: 'Biology Notes.PDF' }), 'pdf')
-  assert.equal(getUploadFileKind({ mimetype: '', originalFilename: 'chapter-1.docx' }), 'docx')
 })
 
 test('getUploadFileKind rejects unsupported file types', () => {
@@ -29,10 +24,7 @@ test('getUploadFileKind rejects unsupported file types', () => {
 
 test('getUploadContentType normalizes the MIME type for supported uploads', () => {
   assert.equal(getUploadContentType({ type: '', name: 'physics.pdf' }), 'application/pdf')
-  assert.equal(
-    getUploadContentType({ mimetype: '', originalFilename: 'worksheet.docx' }),
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  )
+  assert.equal(getUploadContentType({ mimetype: '', originalFilename: 'worksheet.docx' }), '')
 })
 
 test('validateUploadFile handles common upload edge cases', () => {

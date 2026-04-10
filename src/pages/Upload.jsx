@@ -2,7 +2,8 @@ import { useRef, useState } from 'react'
 import AppLoader from '../components/AppLoader'
 import TopBar from '../components/TopBar'
 import { useT } from '../i18n'
-import { documentsApi, quizApi } from '../lib/api'
+import { documentsApi, quizApi, studyPlanApi } from '../lib/api'
+import { getStageContext } from '../lib/studyStage'
 import { validateUploadFile } from '../../shared/uploadValidation.js'
 
 export default function Upload({
@@ -12,6 +13,7 @@ export default function Upload({
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadStage, setUploadStage] = useState('upload')
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [lastDocumentId, setLastDocumentId] = useState(null)
@@ -46,6 +48,7 @@ export default function Upload({
 
     setUploading(true)
     setUploadProgress(0)
+    setUploadStage('upload')
     setError('')
     setSuccessMessage('')
 
@@ -55,12 +58,28 @@ export default function Upload({
       setSelectedDocumentId(result.document.id)
       setLastDocumentId(result.document.id)
 
+      let studyPlanReady = false
+      let stageFocusTopic = ''
+
       if (result.analysisAvailable) {
+        setUploadStage('roadmap')
+
+        try {
+          const planData = await studyPlanApi.generatePlan(result.document.id)
+          stageFocusTopic = getStageContext(planData, result.document).focusTopic || ''
+          studyPlanReady = true
+          await refreshAppData()
+          setSelectedDocumentId(result.document.id)
+        } catch {
+          // Keep upload successful even if roadmap preparation needs another try.
+        }
+
         void (async () => {
           try {
             await quizApi.preGenerate(result.document.id, {
-              count: 5,
+              count: 20,
               type: 'mcq',
+              topic: stageFocusTopic || null,
               lang,
             })
           } catch {
@@ -71,6 +90,7 @@ export default function Upload({
             await quizApi.preGenerate(result.document.id, {
               count: 50,
               type: 'flashcard',
+              topic: stageFocusTopic || null,
               lang,
             })
           } catch {
@@ -80,16 +100,19 @@ export default function Upload({
       }
 
       setSuccessMessage(
-        result.analysisAvailable && result.roadmapReady
+        result.analysisAvailable && (studyPlanReady || result.roadmapReady)
           ? `${result.document.title} is ready. Your roadmap is available now, and you can start studying right away.`
           : result.analysisAvailable
           ? `${result.document.title} uploaded successfully. If the roadmap is still empty, open the Roadmap tab and generate it from the document.`
           : `${result.document.title} uploaded successfully. AI analysis currently works best for PDF documents.`
       )
+
+      setScreen('dashboard')
     } catch (uploadError) {
       setError(uploadError.message || t('errors.generic'))
     } finally {
       setUploading(false)
+      setUploadStage('upload')
     }
   }
 
@@ -154,7 +177,16 @@ export default function Upload({
             </div>
           )}
         </div>
-        {uploading && <AppLoader overlay subtitle={`Uploading your document${uploadProgress ? ` · ${uploadProgress}%` : ''}`} />}
+        {uploading && (
+          <AppLoader
+            overlay
+            subtitle={
+              uploadStage === 'roadmap'
+                ? 'Preparing your roadmap and daily study plan'
+                : `Uploading your document${uploadProgress ? ` · ${uploadProgress}%` : ''}`
+            }
+          />
+        )}
 
         {error && (
           <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">

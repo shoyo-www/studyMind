@@ -3,6 +3,7 @@
 // Returns questions WITHOUT modelAnswer (server-side only)
 
 import { fail, getAdminSupabase, ok, requireAuth, setCors } from '../../server/helpers.js'
+import { parseMockTestTitle } from '../../server/mockTestStage.js'
 
 export default async function handler(req, res) {
   setCors(req, res)
@@ -29,6 +30,8 @@ export default async function handler(req, res) {
 
     if (error || !mt) return fail(res, { status: 404, message: 'We could not find that mock test. Please refresh and try again.' })
 
+    const metadata = parseMockTestTitle(mt.title)
+
     const safeQuestions = (Array.isArray(mt.questions) ? mt.questions : []).map(q => ({
       id:             q.id,
       section:        q.section,
@@ -52,6 +55,8 @@ export default async function handler(req, res) {
         createdAt:       mt.created_at,
         isExisting:      true,
         hasSubmissions:  mt.mock_test_submissions?.length > 0,
+        focusTopic:      metadata.focusTopic,
+        stageDayNumber:  metadata.stageDayNumber,
       },
       questions:  safeQuestions,
       isExisting: true,

@@ -126,6 +126,20 @@ function isGeminiQuotaError(error) {
   )
 }
 
+function isGeminiInputTooLargeError(error) {
+  const status = getGeminiErrorStatus(error)
+  const message = getGeminiErrorMessage(error).toUpperCase()
+
+  return (
+    status === 400
+    && (
+      message.includes('INPUT TOKEN COUNT EXCEEDS')
+      || message.includes('MAXIMUM NUMBER OF TOKENS ALLOWED')
+      || message.includes('TOKEN COUNT EXCEEDS')
+    )
+  )
+}
+
 function isPermanentGeminiQuotaError(error) {
   if (!isGeminiQuotaError(error)) return false
 
@@ -192,6 +206,15 @@ function createGeminiQuotaError(message, error) {
   return friendlyError
 }
 
+function createGeminiInputTooLargeError(message, error) {
+  const friendlyError = new Error(message)
+  friendlyError.status = 413
+  friendlyError.geminiIssueType = 'input_too_large'
+  friendlyError.upstreamStatus = getGeminiErrorStatus(error)
+  friendlyError.cause = error
+  return friendlyError
+}
+
 export function shouldSkipGeminiDueToRecentQuota() {
   return Date.now() < geminiQuotaCooldownUntil
 }
@@ -202,6 +225,7 @@ export async function runGeminiTask(task, options = {}) {
     retryDelaysMs = DEFAULT_RETRY_DELAYS_MS,
     userMessage = 'The AI is a little busy right now. Please try again in about a minute.',
     quotaUserMessage = 'The AI is temporarily unavailable right now. Please try again a little later.',
+    inputTooLargeUserMessage = 'This document is too large for the AI to process in one pass. Please narrow the request or try a shorter excerpt.',
   } = options
 
   let lastError
@@ -211,6 +235,10 @@ export async function runGeminiTask(task, options = {}) {
       return await task()
     } catch (error) {
       lastError = error
+
+      if (isGeminiInputTooLargeError(error)) {
+        throw createGeminiInputTooLargeError(inputTooLargeUserMessage, error)
+      }
 
       if (!isRetryableGeminiError(error)) {
         throw error

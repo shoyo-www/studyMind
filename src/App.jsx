@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Upload    from './pages/Upload'
 import Chat      from './pages/Chat'
 import Roadmap   from './pages/Roadmap'
+import Missions  from './pages/Missions'
 import Quiz      from './pages/Quiz'
 import Flashcards from './pages/Flashcards'
 import Progress  from './pages/Progress'
@@ -25,6 +26,7 @@ const PAGES = {
   upload:    Upload,
   chat:      Chat,
   roadmap:   Roadmap,
+  missions:  Missions,
   quiz:      Quiz,
   flashcards: Flashcards,
   progress:  Progress,

@@ -1,28 +1,44 @@
-// api/mocktest/generate.js
-// Generates a full exam question paper from a PDF
-// KEY BEHAVIOURS:
-//   1. Each uploaded PDF gets one generated mock test
-//   2. If a test already exists for the PDF, return it instead of creating another
-//   3. Gemini primary → Groq fallback
-
 import {
-  checkRateLimit, ensureProfile, fail, getAdminSupabase,
-  getClientIp, ok, requireAuth, sanitizeFileName, setCors,
+  checkRateLimit,
+  ensureProfile,
+  fail,
+  getAdminSupabase,
+  getClientIp,
+  ok,
+  requireAuth,
+  sanitizeFileName,
+  setCors,
 } from '../../server/helpers.js'
 import {
-  getGeminiClient, getGeminiModelName, makeGeminiFilePart,
-  runGeminiTask, shouldSkipGeminiDueToRecentQuota, uploadPdfToGemini, extractJsonFromText,
+  buildRelevantExcerpt,
+  extractPdfText,
+} from '../../server/documentText.js'
+import {
+  extractJsonFromText,
+  getGeminiClient,
+  getGeminiModelName,
+  runGeminiTask,
+  shouldSkipGeminiDueToRecentQuota,
 } from '../../server/gemini.js'
 import { groqGenerateMockTest, isGroqConfigured } from '../../server/groq.js'
-import { extractPdfText } from '../../server/documentText.js'
+import { buildMockTestTitle } from '../../server/mockTestStage.js'
 
-const DEFAULT_DURATION_MINUTES = 180
-const DEFAULT_TOTAL_MARKS = 100
+const DEFAULT_DURATION_MINUTES = 60
+const MAX_QUESTION_COUNT = 15
+const TARGET_TOTAL_MARKS = 40
+const MAX_SOURCE_TEXT_CHARS = 60_000
+const ALLOWED_TYPES = new Set(['short_answer', 'long_answer', 'numerical', 'fill_blank'])
+const ALLOWED_SECTIONS = new Set(['Section A', 'Section B', 'Section C'])
 
-function shouldFallback(err) { return (err?.status || 0) !== 400 }
+function cleanValue(value = '') {
+  return `${value || ''}`.replace(/\s+/g, ' ').trim()
+}
 
-// ── Check if a test already exists for this PDF ──────────────────────
-async function findExistingTest(supabase, userId, documentId) {
+function shouldFallback(error) {
+  return (error?.status || 0) !== 400
+}
+
+async function findExistingTest(supabase, userId, documentId, title) {
   const { data: tests } = await supabase
     .from('mock_tests')
     .select(`
@@ -31,205 +47,360 @@ async function findExistingTest(supabase, userId, documentId) {
     `)
     .eq('user_id', userId)
     .eq('document_id', documentId)
+    .eq('title', title)
     .eq('status', 'ready')
     .order('created_at', { ascending: false })
     .limit(1)
 
-  if (!tests?.length) return null
+  if (!tests?.length) {
+    return null
+  }
+
   return tests[0]
 }
 
-function buildPrompt({ title, subject, durationMinutes, totalMarks }) {
-  const isSmall = totalMarks <= 50
-  const sA = isSmall ? 5 : 8
-  const lA = isSmall ? 3 : 5
-  const nm = isSmall ? 2 : 4
-  const fb = isSmall ? 5 : 8
+function buildPrompt({ title, subject, durationMinutes, focusTopic, stageDayNumber }) {
+  const stageLine = stageDayNumber ? `Roadmap stage day: ${stageDayNumber}.` : ''
+  const focusLine = focusTopic
+    ? `Focus only on this current study topic or stage: "${focusTopic}".`
+    : 'Focus only on the current key topic from the document excerpt.'
 
-  return `You are an expert exam paper setter for "${subject || title}".
-Generate a complete, realistic exam paper from the document content ONLY.
-Duration: ${durationMinutes} minutes. Total marks: ${totalMarks}.
+  return `You are an expert teacher creating a focused topic-wise mock test for "${subject || title}".
+Generate a realistic 1-hour mock test using ONLY the supplied document excerpt.
+${stageLine}
+${focusLine}
+Duration: ${durationMinutes} minutes.
 
-Return ONLY a valid JSON array — absolutely no markdown, no text before or after.
+Return ONLY a valid JSON array with no markdown.
+Generate exactly ${MAX_QUESTION_COUNT} questions. Never return more than ${MAX_QUESTION_COUNT}.
 
-Each element must have these exact fields:
+Each question object must contain:
 - "id": number starting at 1
 - "section": "Section A" | "Section B" | "Section C"
 - "type": "short_answer" | "long_answer" | "numerical" | "fill_blank"
-- "question": the full question text
+- "question": full question text
 - "marks": integer marks for this question
-- "expectedLength": e.g. "2-3 sentences" / "1 page" / "show working"
-- "hint": brief hint string, empty string if none
-- "topic": which topic/chapter this covers
-- "modelAnswer": detailed correct answer (for AI marking only, never shown to student)
+- "expectedLength": short guidance such as "one word", "2-3 sentences", "show working", "1 paragraph"
+- "hint": short hint, or empty string
+- "topic": topic or subtopic name
+- "modelAnswer": clear correct answer for marking
 
-Required distribution:
-- ${sA} × short_answer questions → Section A (1-2 marks each)
-- ${lA} × long_answer questions  → Section B (5-10 marks each)
-- ${nm} × numerical questions    → Section C (4-6 marks each, "show your working")
-- ${fb} × fill_blank questions   → Section A (1 mark each)
+Target structure:
+- Section A: 5 quick recall questions worth 1-2 marks each
+- Section B: 5 understanding or application questions worth 2-4 marks each
+- Section C: 5 deeper questions worth 3-6 marks each
 
 Rules:
-1. All questions must be directly answerable from the document
-2. Total marks of all questions must sum to exactly ${totalMarks}
-3. Numerical questions must include units and require step-by-step working
-4. Fill-in-the-blank must have a single clear correct answer
-5. modelAnswer must be comprehensive — used for AI marking
+1. Every question must stay inside the provided topic/stage
+2. Use only facts present in the excerpt
+3. Keep the whole paper suitable for a 60-minute test
+4. Keep total marks close to ${TARGET_TOTAL_MARKS}
+5. Use "numerical" only if the topic genuinely needs calculation; otherwise prefer short_answer or long_answer
+6. Fill in the blank questions must have one clear answer
 
 Return the JSON array now.`
 }
 
-async function generateWithGemini({ doc, pdfBuffer, durationMinutes, totalMarks }) {
-  const ai         = getGeminiClient()
-  const geminiFile = await uploadPdfToGemini(ai, { buffer: pdfBuffer, displayName: sanitizeFileName(doc.title || 'exam.pdf') })
+function normalizeQuestion(rawQuestion = {}, index = 0, focusTopic = '') {
+  const rawType = cleanValue(rawQuestion?.type).toLowerCase()
+  const type = ALLOWED_TYPES.has(rawType) ? rawType : 'short_answer'
+  const rawSection = cleanValue(rawQuestion?.section)
+  const section = ALLOWED_SECTIONS.has(rawSection)
+    ? rawSection
+    : type === 'fill_blank' || type === 'short_answer'
+      ? 'Section A'
+      : type === 'long_answer'
+        ? 'Section B'
+        : 'Section C'
 
-  const result = await runGeminiTask(() => ai.models.generateContent({
-    model:    getGeminiModelName(),
-    contents: [
-      { text: buildPrompt({ title: doc.title, subject: doc.subject, durationMinutes, totalMarks }) },
-      makeGeminiFilePart(geminiFile),
-    ],
-    config: { responseMimeType: 'application/json', systemInstruction: 'Return only a valid JSON array of question objects. No markdown.' },
-  }), { label: 'MockTest/generate' })
+  let marks = Math.round(Number(rawQuestion?.marks) || 0)
 
-  const parsed = JSON.parse(extractJsonFromText(result.text || '[]'))
-  if (!Array.isArray(parsed) || !parsed.length) throw new Error('No questions generated')
-  return { questions: parsed, model: getGeminiModelName() }
+  if (type === 'fill_blank') {
+    marks = Math.min(2, Math.max(1, marks || 1))
+  } else if (type === 'short_answer') {
+    marks = Math.min(4, Math.max(2, marks || 2))
+  } else if (type === 'long_answer') {
+    marks = Math.min(6, Math.max(4, marks || 5))
+  } else {
+    marks = Math.min(6, Math.max(3, marks || 4))
+  }
+
+  return {
+    id: index + 1,
+    section,
+    type,
+    question: cleanValue(rawQuestion?.question) || `Question ${index + 1}`,
+    marks,
+    expectedLength: cleanValue(rawQuestion?.expectedLength) || (
+      type === 'fill_blank'
+        ? 'one word'
+        : type === 'long_answer'
+          ? '1 paragraph'
+          : type === 'numerical'
+            ? 'show working'
+            : '2-3 sentences'
+    ),
+    hint: cleanValue(rawQuestion?.hint),
+    topic: cleanValue(rawQuestion?.topic) || focusTopic || 'General',
+    modelAnswer: cleanValue(rawQuestion?.modelAnswer) || 'Answer unavailable.',
+  }
 }
 
-async function generateWithGroq({ doc, documentText, durationMinutes, totalMarks }) {
-  const prompt = buildPrompt({ title: doc.title, subject: doc.subject, durationMinutes, totalMarks })
-  const raw    = await groqGenerateMockTest({ documentTitle: doc.title, documentText: documentText.slice(0, 50_000), prompt, totalMarks })
-  if (!Array.isArray(raw) || !raw.length) throw new Error('Groq returned no questions')
-  return { questions: raw, model: 'groq-fallback' }
+function normalizeQuestions(rawQuestions = [], focusTopic = '') {
+  return rawQuestions
+    .filter((question) => question && typeof question === 'object')
+    .slice(0, MAX_QUESTION_COUNT)
+    .map((question, index) => normalizeQuestion(question, index, focusTopic))
+    .filter((question) => question.question)
 }
 
 function safeQuestions(questions) {
-  return questions.map(q => ({
-    id:             q.id,
-    section:        q.section,
-    type:           q.type,
-    question:       q.question,
-    marks:          q.marks,
-    expectedLength: q.expectedLength || '',
-    hint:           q.hint || '',
-    topic:          q.topic,
-    // modelAnswer intentionally omitted — server-side only
+  return questions.map((question) => ({
+    id: question.id,
+    section: question.section,
+    type: question.type,
+    question: question.question,
+    marks: question.marks,
+    expectedLength: question.expectedLength || '',
+    hint: question.hint || '',
+    topic: question.topic,
   }))
+}
+
+async function generateWithGemini({ doc, documentText, durationMinutes, focusTopic, stageDayNumber }) {
+  const excerpt = buildRelevantExcerpt(documentText, {
+    query: focusTopic || '',
+    maxChars: MAX_SOURCE_TEXT_CHARS,
+    maxParagraphs: focusTopic ? 12 : 16,
+  })
+
+  if (!excerpt.trim()) {
+    throw new Error('We could not read enough text from this PDF to build a topic-wise mock test yet.')
+  }
+
+  const ai = getGeminiClient()
+  const result = await runGeminiTask(() => ai.models.generateContent({
+    model: getGeminiModelName(),
+    contents: [{
+      text: [
+        buildPrompt({
+          title: doc.title,
+          subject: doc.subject,
+          durationMinutes,
+          focusTopic,
+          stageDayNumber,
+        }),
+        `Document title: ${sanitizeFileName(doc.title || 'study-notes.pdf')}`,
+        'Use only the provided excerpt.',
+        `Document excerpt:\n${excerpt}`,
+      ].join('\n\n'),
+    }],
+    config: {
+      responseMimeType: 'application/json',
+      systemInstruction: 'Return only a valid JSON array of question objects. No markdown.',
+    },
+  }), { label: 'MockTest/generate' })
+
+  const parsed = JSON.parse(extractJsonFromText(result.text || '[]'))
+  const questions = normalizeQuestions(Array.isArray(parsed) ? parsed : [], focusTopic)
+
+  if (!questions.length) {
+    throw new Error('No mock test questions were generated')
+  }
+
+  return { questions, model: getGeminiModelName() }
+}
+
+async function generateWithGroq({ doc, documentText, durationMinutes, focusTopic, stageDayNumber }) {
+  const excerpt = buildRelevantExcerpt(documentText, {
+    query: focusTopic || '',
+    maxChars: 50_000,
+    maxParagraphs: focusTopic ? 12 : 16,
+  })
+
+  if (!excerpt.trim()) {
+    throw new Error('We could not read enough text from this PDF to build a topic-wise mock test yet.')
+  }
+
+  const prompt = [
+    buildPrompt({
+      title: doc.title,
+      subject: doc.subject,
+      durationMinutes,
+      focusTopic,
+      stageDayNumber,
+    }),
+    `Document title: ${doc.title}`,
+    `Document excerpt:\n${excerpt}`,
+  ].join('\n\n')
+
+  const raw = await groqGenerateMockTest({
+    documentTitle: doc.title,
+    documentText: excerpt,
+    prompt,
+    totalMarks: TARGET_TOTAL_MARKS,
+  })
+
+  const questions = normalizeQuestions(Array.isArray(raw) ? raw : [], focusTopic)
+
+  if (!questions.length) {
+    throw new Error('Groq returned no questions')
+  }
+
+  return { questions, model: 'groq-fallback' }
 }
 
 export default async function handler(req, res) {
   setCors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
-  if (req.method !== 'POST')    return fail(res, { status: 405, message: 'That action is not available here.' })
+  if (req.method !== 'POST') return fail(res, { status: 405, message: 'That action is not available here.' })
 
   try {
     const user = await requireAuth(req)
-    // In-memory rate limit (burst protection — 10/min)
     checkRateLimit(`mocktest-gen:${user.id}:${getClientIp(req)}`, { limit: 10, windowMs: 60_000 })
 
-    const { documentId } = req.body || {}
-    if (!documentId) return fail(res, { status: 400, message: 'Please choose a document first.' })
+    const { documentId, focusTopic: rawFocusTopic = '', stageDayNumber = null } = req.body || {}
+    if (!documentId) {
+      return fail(res, { status: 400, message: 'Please choose a document first.' })
+    }
 
+    const focusTopic = cleanValue(rawFocusTopic)
     const duration = DEFAULT_DURATION_MINUTES
-    const marks = DEFAULT_TOTAL_MARKS
 
     const supabase = getAdminSupabase()
     await ensureProfile(supabase, user)
 
-    // ── 1. Return the existing test for this PDF if one already exists ──
-    const existing = await findExistingTest(supabase, user.id, documentId)
+    const { data: doc, error: docErr } = await supabase
+      .from('documents')
+      .select('id, title, subject, storage_path, mime_type, document_text')
+      .eq('id', documentId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (docErr || !doc) {
+      return fail(res, { status: 404, message: 'We could not find that document. Please refresh and try again.' })
+    }
+
+    if (doc.mime_type !== 'application/pdf') {
+      return fail(res, { status: 400, message: 'Mock tests work with PDF documents right now. Please choose a PDF to continue.' })
+    }
+
+    const mockTestTitle = buildMockTestTitle(doc.title, { focusTopic, stageDayNumber })
+    const existing = await findExistingTest(supabase, user.id, documentId, mockTestTitle)
+
     if (existing) {
-      console.log(`[MockTest/generate] Returning existing test ${existing.id} for user ${user.id}`)
       return ok(res, {
         mockTest: {
-          id:              existing.id,
+          id: existing.id,
           documentId,
-          title:           existing.title,
-          subject:         existing.subject,
+          title: existing.title,
+          subject: existing.subject,
           durationMinutes: existing.duration_minutes,
-          totalMarks:      existing.total_marks,
-          questionCount:   Array.isArray(existing.questions) ? existing.questions.length : 0,
-          createdAt:       existing.created_at,
-          isExisting:      true,
+          totalMarks: existing.total_marks,
+          questionCount: Array.isArray(existing.questions) ? existing.questions.length : 0,
+          createdAt: existing.created_at,
+          isExisting: true,
+          focusTopic,
+          stageDayNumber: Number(stageDayNumber) || null,
         },
-        questions:  safeQuestions(Array.isArray(existing.questions) ? existing.questions : []),
+        questions: safeQuestions(Array.isArray(existing.questions) ? existing.questions : []),
         isExisting: true,
       })
     }
 
-    // ── 2. Fetch document ─────────────────────────────────────────────────
-    const { data: doc, error: docErr } = await supabase
-      .from('documents')
-      .select('id, title, subject, storage_path, mime_type, document_text')
-      .eq('id', documentId).eq('user_id', user.id).single()
+    let documentText = `${doc.document_text || ''}`.trim()
+    if (!documentText && doc.storage_path) {
+      const { data: fileData, error: fileError } = await supabase.storage.from('documents').download(doc.storage_path)
+      if (fileError) throw fileError
 
-    if (docErr || !doc) return fail(res, { status: 404, message: 'We could not find that document. Please refresh and try again.' })
-    if (doc.mime_type !== 'application/pdf') return fail(res, { status: 400, message: 'Mock tests work with PDF documents right now. Please choose a PDF to continue.' })
+      const extracted = await extractPdfText(Buffer.from(await fileData.arrayBuffer()))
+      documentText = `${extracted.text || ''}`.trim()
 
-    // ── 3. Generate questions ─────────────────────────────────────────────
-    let questions = [], model = 'unknown'
-
-    try {
-      if (!process.env.GEMINI_API_KEY || shouldSkipGeminiDueToRecentQuota()) throw new Error('Gemini unavailable')
-      const { data: fileData, error: fileErr } = await supabase.storage.from('documents').download(doc.storage_path)
-      if (fileErr) throw fileErr
-      const pdfBuffer = Buffer.from(await fileData.arrayBuffer())
-      ;({ questions, model } = await generateWithGemini({ doc, pdfBuffer, durationMinutes: duration, totalMarks: marks }))
-    } catch (geminiErr) {
-      if (shouldFallback(geminiErr) && isGroqConfigured()) {
-        console.warn('[MockTest/generate] Gemini failed → Groq:', geminiErr.message)
-        let documentText = doc.document_text || ''
-        if (!documentText.trim()) {
-          const { data: fd } = await supabase.storage.from('documents').download(doc.storage_path)
-          if (fd) {
-            const { text } = await extractPdfText(Buffer.from(await fd.arrayBuffer()))
-            documentText = text || ''
-            if (documentText) supabase.from('documents').update({ document_text: documentText }).eq('id', doc.id).catch(() => {})
-          }
-        }
-        ;({ questions, model } = await generateWithGroq({ doc, documentText, durationMinutes: duration, totalMarks: marks }))
-      } else {
-        throw geminiErr
+      if (documentText) {
+        supabase
+          .from('documents')
+          .update({ document_text: documentText })
+          .eq('id', doc.id)
+          .catch(() => {})
       }
     }
 
-    const actualTotal = questions.reduce((s, q) => s + (Number(q.marks) || 0), 0) || marks
+    if (!documentText) {
+      return fail(res, {
+        status: 422,
+        message: 'We could not read enough text from this PDF to build a mock test yet. Please try another PDF.',
+      })
+    }
 
-    // ── 4. Save to DB ─────────────────────────────────────────────────────
-    const { data: mockTest, error: insertErr } = await supabase
+    let questions = []
+    let model = 'unknown'
+
+    try {
+      if (!process.env.GEMINI_API_KEY || shouldSkipGeminiDueToRecentQuota()) {
+        throw new Error('Gemini unavailable')
+      }
+
+      ;({ questions, model } = await generateWithGemini({
+        doc,
+        documentText,
+        durationMinutes: duration,
+        focusTopic,
+        stageDayNumber,
+      }))
+    } catch (geminiError) {
+      if (shouldFallback(geminiError) && isGroqConfigured()) {
+        console.warn('[MockTest/generate] Gemini failed → Groq:', geminiError.message)
+        ;({ questions, model } = await generateWithGroq({
+          doc,
+          documentText,
+          durationMinutes: duration,
+          focusTopic,
+          stageDayNumber,
+        }))
+      } else {
+        throw geminiError
+      }
+    }
+
+    const totalMarks = questions.reduce((sum, question) => sum + (Number(question.marks) || 0), 0)
+
+    const { data: mockTest, error: insertError } = await supabase
       .from('mock_tests')
       .insert({
-        user_id: user.id, document_id: documentId,
-        title:   `${doc.title} — Mock Test`,
+        user_id: user.id,
+        document_id: documentId,
+        title: mockTestTitle,
         subject: doc.subject || 'General',
-        duration_minutes:     duration,
-        total_marks:          actualTotal,
+        duration_minutes: duration,
+        total_marks: totalMarks,
         questions,
-        status:               'ready',
+        status: 'ready',
         generated_with_model: model,
       })
       .select('id, title, subject, duration_minutes, total_marks, created_at')
       .single()
 
-    if (insertErr) throw insertErr
+    if (insertError) {
+      throw insertError
+    }
 
     return ok(res, {
       mockTest: {
-        id:              mockTest.id,
+        id: mockTest.id,
         documentId,
-        title:           mockTest.title,
-        subject:         mockTest.subject,
+        title: mockTest.title,
+        subject: mockTest.subject,
         durationMinutes: mockTest.duration_minutes,
-        totalMarks:      mockTest.total_marks,
-        questionCount:   questions.length,
-        createdAt:       mockTest.created_at,
-        isExisting:      false,
+        totalMarks: mockTest.total_marks,
+        questionCount: questions.length,
+        createdAt: mockTest.created_at,
+        isExisting: false,
+        focusTopic,
+        stageDayNumber: Number(stageDayNumber) || null,
       },
-      questions:  safeQuestions(questions),
+      questions: safeQuestions(questions),
       isExisting: false,
     }, 201)
-
   } catch (error) {
     return fail(res, error)
   }

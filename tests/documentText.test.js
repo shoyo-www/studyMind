@@ -2,11 +2,13 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  buildRelevantExcerpt,
   extractPdfText,
   isMissingDocumentTextColumnError,
   isSupabaseNoRowsError,
   normalizeExtractedText,
-} from '../api/_documentText.js'
+  sliceDocumentTextForAi,
+} from '../server/documentText.js'
 
 test('normalizeExtractedText removes null bytes, extra blank lines, and trims the result', () => {
   const input = '  Line 1\u0000\r\n\n\nLine 2   \n\n\n\nLine 3  '
@@ -16,6 +18,31 @@ test('normalizeExtractedText removes null bytes, extra blank lines, and trims th
 test('extractPdfText returns an empty result instead of throwing for invalid input', async () => {
   const result = await extractPdfText(Buffer.from('not a real pdf'))
   assert.deepEqual(result, { text: '', totalPages: 0 })
+})
+
+test('sliceDocumentTextForAi samples long text instead of sending everything', () => {
+  const text = `Start ${'a'.repeat(40_000)} Middle ${'b'.repeat(40_000)} End ${'c'.repeat(40_000)}`
+  const excerpt = sliceDocumentTextForAi(text, 9_000)
+
+  assert.ok(excerpt.length <= 9_010)
+  assert.match(excerpt, /Start/)
+  assert.match(excerpt, /b{50,}/)
+  assert.match(excerpt, /c{50,}/)
+})
+
+test('buildRelevantExcerpt prefers paragraphs that match the query', () => {
+  const text = [
+    'Cell biology covers membranes and transport.',
+    '',
+    'Photosynthesis uses chlorophyll and light reactions to build glucose.',
+    '',
+    'Genetics explains inheritance through DNA and genes.',
+  ].join('\n')
+
+  const excerpt = buildRelevantExcerpt(text, { query: 'photosynthesis chlorophyll', maxChars: 500 })
+
+  assert.match(excerpt, /Photosynthesis uses chlorophyll/)
+  assert.doesNotMatch(excerpt, /Genetics explains inheritance/)
 })
 
 test('isMissingDocumentTextColumnError recognizes common Supabase column errors', () => {

@@ -3,6 +3,7 @@ import AppLoader from '../components/AppLoader'
 import TopBar from '../components/TopBar'
 import { useT } from '../i18n'
 import { quizApi } from '../lib/api'
+import { useResolvedStudyTopic } from '../lib/studyStage'
 
 const LABELS = ['A', 'B', 'C', 'D']
 const QUIZ_QUESTION_COUNT = 20
@@ -96,7 +97,15 @@ export default function Quiz({
   const saveTimeoutRef = useRef(null)
 
   const activeDocumentId = activeDocument?.id || null
-  const focusedTopic = studyFocus?.documentId === activeDocumentId ? `${studyFocus?.topic || ''}`.trim() : ''
+  const {
+    focusTopic: focusedTopic,
+    isManualFocus,
+    isRoadmapFocus,
+    stageDayNumber,
+  } = useResolvedStudyTopic({
+    document: activeDocument,
+    studyFocus,
+  })
   const currentQuestion = questions[qIdx]
   const selected = answers[qIdx] ?? null
   const score = getScore(questions, answers)
@@ -378,15 +387,19 @@ export default function Quiz({
       <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 sm:py-7 max-w-2xl w-full mx-auto">
         {focusedTopic && (
           <div className="mb-4 rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm text-violet-800">
-            <div className="font-semibold mb-1">{t('quiz.focusedOn')}</div>
+            <div className="font-semibold mb-1">
+              {isRoadmapFocus && stageDayNumber ? `Current roadmap stage · Day ${stageDayNumber}` : t('quiz.focusedOn')}
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <span>{focusedTopic}</span>
-              <button
-                onClick={clearStudyFocus}
-                className="text-xs px-2.5 py-1 rounded-full border border-violet-200 bg-white text-violet-600 hover:bg-violet-100 transition-colors"
-              >
-                {t('quiz.clearFocus')}
-              </button>
+              {isManualFocus && (
+                <button
+                  onClick={clearStudyFocus}
+                  className="text-xs px-2.5 py-1 rounded-full border border-violet-200 bg-white text-violet-600 hover:bg-violet-100 transition-colors"
+                >
+                  {t('quiz.clearFocus')}
+                </button>
+              )}
             </div>
           </div>
         )}

@@ -9,14 +9,17 @@ import {
   setCors,
 } from '../server/helpers.js'
 import {
+  buildRelevantExcerpt,
+  extractPdfText,
+  isMissingDocumentTextColumnError,
+} from '../server/documentText.js'
+import {
   extractJsonFromText,
   getGeminiClient,
   getGeminiModelName,
-  makeGeminiFilePart,
   runGeminiTask,
   shouldSkipGeminiDueToRecentQuota,
   shouldTryAnotherGeminiModel,
-  uploadPdfToGemini,
 } from '../server/gemini.js'
 
 const ALLOWED_TYPES = new Set(['mcq', 'truefalse', 'flashcard'])
@@ -51,7 +54,7 @@ const QUIZ_COLUMNS = [
   'created_at',
 ].join(', ')
 const DEFAULT_COUNT_BY_TYPE = {
-  mcq: 10,
+  mcq: 20,
   truefalse: 10,
   flashcard: 50,
 }
@@ -61,6 +64,7 @@ const MAX_COUNT_BY_TYPE = {
   flashcard: 50,
 }
 const DEFAULT_FALLBACK_MODEL = 'gemma-4-31b-it'
+const MAX_QUIZ_SOURCE_TEXT_CHARS = 60_000
 
 function getLanguageDefaults(lang = 'en') {
   const isHindi = lang === 'hi'
@@ -235,12 +239,23 @@ function buildQuizResponse(quiz) {
 }
 
 async function fetchDocument(supabase, userId, documentId) {
-  const { data: document, error } = await supabase
+  let canPersistDocumentText = true
+  let { data: document, error } = await supabase
     .from('documents')
-    .select('id, title, storage_path, user_id, mime_type')
+    .select('id, title, storage_path, user_id, mime_type, document_text')
     .eq('id', documentId)
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
+
+  if (error && isMissingDocumentTextColumnError(error)) {
+    canPersistDocumentText = false
+    ;({ data: document, error } = await supabase
+      .from('documents')
+      .select('id, title, storage_path, user_id, mime_type')
+      .eq('id', documentId)
+      .eq('user_id', userId)
+      .maybeSingle())
+  }
 
   if (error || !document) {
     const notFoundError = new Error('Document not found')
@@ -248,7 +263,41 @@ async function fetchDocument(supabase, userId, documentId) {
     throw notFoundError
   }
 
-  return document
+  return {
+    document,
+    canPersistDocumentText,
+  }
+}
+
+async function loadDocumentText({ supabase, userId, document, canPersistDocumentText }) {
+  let documentText = `${document?.document_text || ''}`.trim()
+
+  if (documentText) {
+    return documentText
+  }
+
+  const { data: fileData, error: fileError } = await supabase.storage
+    .from('documents')
+    .download(document.storage_path)
+
+  if (fileError) throw fileError
+
+  const extracted = await extractPdfText(Buffer.from(await fileData.arrayBuffer()))
+  documentText = `${extracted.text || ''}`.trim()
+
+  if (documentText && canPersistDocumentText) {
+    await supabase
+      .from('documents')
+      .update({ document_text: documentText })
+      .eq('id', document.id)
+      .eq('user_id', userId)
+      .then(() => {})
+      .catch((persistError) => {
+        console.warn('[Quiz] Could not persist extracted document text:', persistError?.message || persistError)
+      })
+  }
+
+  return documentText
 }
 
 function chooseLatestQuiz(quizzes = []) {
@@ -330,13 +379,18 @@ async function updateQuizRecord(supabase, quizId, payload) {
   return serializeQuiz(data)
 }
 
-async function generateQuestionsWithGemini({ document, count, topic, type, pdfBuffer, lang = 'en' }) {
+async function generateQuestionsWithGemini({ document, count, topic, type, documentText, lang = 'en' }) {
   const ai = getQuizGeminiClient()
   const modelCandidates = getQuizModelCandidates()
-  const geminiFile = await uploadPdfToGemini(ai, {
-    buffer: pdfBuffer,
-    displayName: sanitizeFileName(document.title || 'study-notes.pdf'),
+  const excerpt = buildRelevantExcerpt(documentText, {
+    query: topic || '',
+    maxChars: MAX_QUIZ_SOURCE_TEXT_CHARS,
+    maxParagraphs: topic ? 10 : 14,
   })
+
+  if (!excerpt.trim()) {
+    throw createUnavailableError('We could not read enough text from this PDF to generate a quiz yet. Please try another PDF.')
+  }
 
   let lastError = null
 
@@ -344,14 +398,18 @@ async function generateQuestionsWithGemini({ document, count, topic, type, pdfBu
     try {
       const result = await runGeminiTask(() => ai.models.generateContent({
         model: getGeminiModelName(modelName),
-        contents: [
-          { text: buildPrompt({ type, count, topic, lang }) },
-          makeGeminiFilePart(geminiFile),
-        ],
+        contents: [{
+          text: [
+            buildPrompt({ type, count, topic, lang }),
+            `Document title: ${sanitizeFileName(document.title || 'study-notes.pdf')}`,
+            'Use only the provided document excerpt.',
+            `Document excerpt:\n${excerpt}`,
+          ].join('\n\n'),
+        }],
         config: {
           responseMimeType: 'application/json',
           systemInstruction: [
-            'Generate questions only from the uploaded PDF.',
+            'Generate questions only from the provided document excerpt.',
             'Do not invent facts not present in the PDF.',
             'Keep explanations short and specific.',
           ].join(' '),
@@ -435,7 +493,7 @@ async function handlePost(req, res) {
   }
 
   const supabase = getAdminSupabase()
-  const document = await fetchDocument(supabase, user.id, documentId)
+  const { document, canPersistDocumentText } = await fetchDocument(supabase, user.id, documentId)
 
   if (document.mime_type !== 'application/pdf') {
     return fail(res, {
@@ -453,6 +511,20 @@ async function handlePost(req, res) {
     if (existingAutoQuiz && existingAutoQuiz.source === QUIZ_SOURCE.autoUpload && existingAutoQuiz.status !== QUIZ_STATUS.failed) {
       return ok(res, buildQuizResponse(existingAutoQuiz))
     }
+  }
+
+  const documentText = await loadDocumentText({
+    supabase,
+    userId: user.id,
+    document,
+    canPersistDocumentText,
+  })
+
+  if (!documentText.trim()) {
+    return fail(res, {
+      status: 422,
+      message: 'We could not read enough text from this PDF to generate a quiz yet. Please try another PDF.',
+    })
   }
 
   const quizShell = await createQuizShell(supabase, {
@@ -486,19 +558,12 @@ async function handlePost(req, res) {
     console.warn('[Quiz] Skipping generation while AI service cooldown is active.')
   } else {
     try {
-      const { data: fileData, error: fileError } = await supabase.storage
-        .from('documents')
-        .download(document.storage_path)
-
-      if (fileError) throw fileError
-
-      const pdfBuffer = Buffer.from(await fileData.arrayBuffer())
       const { questions, modelName } = await generateQuestionsWithGemini({
         document,
         count,
         topic,
         type,
-        pdfBuffer,
+        documentText,
         lang,
       })
 
