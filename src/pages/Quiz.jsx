@@ -91,6 +91,13 @@ export default function Quiz({
   const answeredCount = answers.filter((answer) => answer !== null && answer !== undefined).length
   const pct = questions.length ? Math.round(((qIdx + 1) / questions.length) * 100) : 0
   const activeDocumentIsPdf = activeDocument?.mime_type === 'application/pdf'
+  const showLoader = loading
+  const loaderSubtitle = pending
+    ? 'Checking whether your latest quiz is ready'
+    : questions.length
+      ? 'Refreshing your quiz'
+      : `Generating your ${focusedTopic ? `${focusedTopic} ` : ''}${QUIZ_QUESTION_COUNT}-question quiz`
+
   function clearQuizState({ keepError = false } = {}) {
     setQuiz(null)
     setQuestions([])

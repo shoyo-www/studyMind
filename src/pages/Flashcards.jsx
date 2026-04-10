@@ -221,6 +221,13 @@ export default function Flashcards({
   const total = allCards.length
   const doneCount = known.length + skipped.length
   const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0
+  const showLoader = loading
+  const loaderSubtitle = pending
+    ? 'Checking whether your latest flashcards are ready'
+    : allCards.length
+      ? 'Refreshing your flashcards'
+      : `Generating ${focusedTopic ? `${focusedTopic} ` : ''}flashcards`
+
   function resetRound(cards) {
     setDeck([...cards])
     setKnown([])
