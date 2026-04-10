@@ -12,16 +12,29 @@ const STORAGE_KEY  = 'preppal_lang'
 // ── Context ───────────────────────────────────────────────────────────
 const LangContext = createContext(null)
 
+function getSavedLanguage() {
+  try {
+    return localStorage.getItem(STORAGE_KEY) || 'en'
+  } catch {
+    return 'en'
+  }
+}
+
 // ── Provider ──────────────────────────────────────────────────────────
 export function LanguageProvider({ children }) {
-  const saved = localStorage.getItem(STORAGE_KEY) || 'en'
-  const [lang, setLangState] = useState(saved)
+  const [lang, setLangState] = useState(getSavedLanguage)
 
   function setLang(newLang) {
-    localStorage.setItem(STORAGE_KEY, newLang)
+    try {
+      localStorage.setItem(STORAGE_KEY, newLang)
+    } catch {
+      // Ignore storage failures and keep language only in memory.
+    }
     setLangState(newLang)
-    // Switch font for Hindi (Noto Sans Devanagari looks great)
-    document.documentElement.setAttribute('data-lang', newLang)
+    if (typeof document !== 'undefined') {
+      // Switch font for Hindi (Noto Sans Devanagari looks great)
+      document.documentElement.setAttribute('data-lang', newLang)
+    }
   }
 
   // t('dashboard.greeting') → 'Good morning' or 'सुप्रभात'

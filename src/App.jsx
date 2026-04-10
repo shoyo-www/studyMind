@@ -14,6 +14,8 @@ import Landing   from './pages/Landing'
 import Auth      from './pages/Auth'
 import MockTest  from './pages/MockTest'
 import Profile   from './pages/Profile'
+import LegalDataPage from './pages/LegalDataPage'
+import LegalUsePage from './pages/LegalUsePage'
 import AppLoader from './components/AppLoader'
 import ChatPanel from './components/ChatPanel'
 import BottomNav from './components/BottomNav'
@@ -57,6 +59,7 @@ class PageErrorBoundary extends Component {
 
 export default function App() {
   const [view,   setView]   = useState('landing')
+  const [legalReturnView, setLegalReturnView] = useState('landing')
   const [screen, setScreen] = useState('dashboard')
   const [user,   setUser]   = useState(null)
   const [profileData, setProfileData] = useState(null)
@@ -97,6 +100,12 @@ export default function App() {
     setStudyFocus({ documentId: null, topic: '', origin: '' })
   }
 
+  function openLegalPage(nextView, returnView = view) {
+    setLegalReturnView(returnView)
+    setView(nextView)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   function openStudyFocus({ documentId = null, topic = '', screen: nextScreen = 'quiz', origin = '' } = {}) {
     const normalizedTopic = `${topic || ''}`.trim()
     const nextDocumentId = documentId || selectedDocumentId || null
@@ -127,11 +136,21 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase) return
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) { setUser(session.user); setView('app') }
+    if (!isSupabaseConfigured || !supabase) {
       setAppBooting(false)
-    })
+      return
+    }
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (session?.user) { setUser(session.user); setView('app') }
+      })
+      .catch((error) => {
+        console.error('[App boot]', error)
+        setAppError(error?.message || 'Unable to restore your session right now.')
+      })
+      .finally(() => {
+        setAppBooting(false)
+      })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) { setUser(session.user); setView('app') }
       else {
@@ -163,8 +182,43 @@ export default function App() {
 
   if (appBooting) return <AppLoader fullScreen />
 
-  if (view === 'landing') return <Landing onGetStarted={() => setView('auth')} onLogin={() => setView('auth')} />
-  if (view === 'auth')    return <Auth onBack={() => setView('landing')} onSuccess={() => setView('app')} configError={!isSupabaseConfigured ? missingSupabaseEnvMessage : ''} />
+  if (view === 'landing') {
+    return (
+      <Landing
+        onGetStarted={() => setView('auth')}
+        onLogin={() => setView('auth')}
+        onShowPrivacy={() => openLegalPage('privacy', 'landing')}
+        onShowTerms={() => openLegalPage('terms', 'landing')}
+      />
+    )
+  }
+  if (view === 'auth') {
+    return (
+      <Auth
+        onBack={() => setView('landing')}
+        onSuccess={() => setView('app')}
+        onShowPrivacy={() => openLegalPage('privacy', 'auth')}
+        onShowTerms={() => openLegalPage('terms', 'auth')}
+        configError={!isSupabaseConfigured ? missingSupabaseEnvMessage : ''}
+      />
+    )
+  }
+  if (view === 'privacy') {
+    return (
+      <LegalDataPage
+        onBack={() => setView(legalReturnView)}
+        onOpenAuth={() => setView('auth')}
+      />
+    )
+  }
+  if (view === 'terms') {
+    return (
+      <LegalUsePage
+        onBack={() => setView(legalReturnView)}
+        onOpenAuth={() => setView('auth')}
+      />
+    )
+  }
 
   const resolvedScreen = screen === 'pricing' ? 'dashboard' : screen
   const Page = PAGES[resolvedScreen] || Dashboard
@@ -229,7 +283,7 @@ export default function App() {
       {/* ── Right AI Chat Panel ── */}
       <ChatPanel activeDocument={activeDocument} />
       <BottomNav screen={resolvedScreen} setScreen={navigate} />
-      <Analytics />
+      {import.meta.env.PROD ? <Analytics /> : null}
     </div>
   )
 }

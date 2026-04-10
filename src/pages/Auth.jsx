@@ -10,7 +10,7 @@ const BENEFITS = [
   'Hindi + English interface',
 ]
 
-export default function Auth({ onBack, onSuccess, configError = '' }) {
+export default function Auth({ onBack, onSuccess, onShowPrivacy, onShowTerms, configError = '' }) {
   const [mode,     setMode]     = useState('login') // 'login' | 'signup'
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
@@ -279,12 +279,30 @@ export default function Auth({ onBack, onSuccess, configError = '' }) {
                 </button>
               </p>
 
+              {mode === 'login' && (
+                <p className="text-center text-[11px] text-zinc-300 mt-4 leading-relaxed">
+                  By logging in, you acknowledge our{' '}
+                  <button onClick={onShowPrivacy} type="button" className="underline hover:text-zinc-500 transition-colors">
+                    Privacy Policy
+                  </button>
+                  {' '}and{' '}
+                  <button onClick={onShowTerms} type="button" className="underline hover:text-zinc-500 transition-colors">
+                    Terms & Conditions
+                  </button>.
+                </p>
+              )}
+
               {/* Terms */}
               {mode === 'signup' && (
                 <p className="text-center text-[11px] text-zinc-300 mt-4 leading-relaxed">
                   By signing up, you agree to our{' '}
-                  <span className="underline cursor-pointer">Terms of Service</span> and{' '}
-                  <span className="underline cursor-pointer">Privacy Policy</span>.
+                  <button onClick={onShowTerms} type="button" className="underline hover:text-zinc-500 transition-colors">
+                    Terms of Service
+                  </button>
+                  {' '}and{' '}
+                  <button onClick={onShowPrivacy} type="button" className="underline hover:text-zinc-500 transition-colors">
+                    Privacy Policy
+                  </button>.
                 </p>
               )}
             </>

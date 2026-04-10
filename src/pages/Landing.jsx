@@ -90,7 +90,7 @@ function StarRating({ count }) {
   )
 }
 
-export default function Landing({ onGetStarted, onLogin }) {
+export default function Landing({ onGetStarted, onLogin, onShowPrivacy, onShowTerms }) {
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -426,10 +426,10 @@ export default function Landing({ onGetStarted, onLogin }) {
           <div className="flex items-center gap-6 text-xs text-zinc-400">
             <a href="#features" className="hover:text-zinc-700 transition-colors">Features</a>
             <a href="#pricing" className="hover:text-zinc-700 transition-colors">Pricing</a>
-            <span>Privacy Policy</span>
-            <span>Terms</span>
+            <button onClick={onShowPrivacy} className="hover:text-zinc-700 transition-colors">Privacy Policy</button>
+            <button onClick={onShowTerms} className="hover:text-zinc-700 transition-colors">Terms</button>
           </div>
-          <div className="text-xs text-zinc-400">© 2025 PrepPal · Made in India 🇮🇳</div>
+          <div className="text-xs text-zinc-400">© 2026 PrepPal · Made in India 🇮🇳</div>
         </div>
       </footer>
 
