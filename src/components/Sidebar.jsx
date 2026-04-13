@@ -25,17 +25,17 @@ export default function Sidebar({ screen, setScreen, user, profile, onLogout, on
   const planLabel = getPlanLabel(profile?.plan, lang)
 
   return (
-    <aside className="w-64 sm:w-56 shrink-0 bg-white border-r border-zinc-100 flex flex-col h-full">
+    <aside className="w-64 sm:w-56 shrink-0 bg-[rgba(8,14,26,0.95)] border-r pp-app-border flex flex-col h-full backdrop-blur-xl">
       {/* Logo + close button on mobile */}
-      <div className="px-5 py-5 border-b border-zinc-100 flex items-center justify-between">
+      <div className="px-5 py-5 border-b pp-app-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           {/* App icon mark */}
           <div className="shrink-0">
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="32" height="32" rx="7" fill="#6c63ff"/>
+              <rect width="32" height="32" rx="7" fill="#ff7669"/>
               <path d="M8 21 L8 11 Q16 9 16 11 L16 21" fill="white" opacity="0.95"/>
               <path d="M24 21 L24 11 Q16 9 16 11 L16 21" fill="white" opacity="0.72"/>
-              <line x1="16" y1="11" x2="16" y2="21" stroke="#6c63ff" strokeWidth="0.8"/>
+              <line x1="16" y1="11" x2="16" y2="21" stroke="#ff7669" strokeWidth="0.8"/>
               <path d="M8 21 Q16 23.5 24 21" stroke="white" strokeWidth="1.3" fill="none" strokeLinecap="round"/>
               <circle cx="21" cy="7.5" r="1.8" fill="white"/>
               <circle cx="24.5" cy="5" r="1.1" fill="white" opacity="0.7"/>
@@ -43,17 +43,17 @@ export default function Sidebar({ screen, setScreen, user, profile, onLogout, on
             </svg>
           </div>
           <div>
-            <div className="font-display font-bold text-lg tracking-tight text-zinc-900 leading-tight">
-              Prep<span className="text-violet-600">Pal</span>
+            <div className="font-display font-bold text-lg tracking-tight text-white leading-tight">
+              Prep<span className="text-[var(--pp-coral)]">Pal</span>
             </div>
-            <div className="text-[11px] text-zinc-400 font-light">Your exam prep partner</div>
+            <div className="text-[11px] pp-app-muted font-light">Your exam prep partner</div>
           </div>
         </div>
         {/* Close button — mobile only */}
         {onClose && (
           <button
             onClick={onClose}
-            className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+            className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-[var(--pp-text-muted)] hover:text-white hover:bg-white/5 transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
@@ -70,19 +70,19 @@ export default function Sidebar({ screen, setScreen, user, profile, onLogout, on
           return (
             <div key={item.id}>
               {showSection && (
-                <div className="px-6 pt-4 pb-1.5 text-[10px] font-medium tracking-widest text-zinc-300 uppercase">
+                <div className="px-6 pt-4 pb-1.5 text-[10px] font-medium tracking-widest pp-app-muted uppercase">
                   {t(`nav.${item.section.toLowerCase()}`)}
                 </div>
               )}
               <button
                 onClick={() => setScreen(item.id)}
-                className={`w-full flex items-center gap-3 px-6 py-3 text-sm transition-all text-left
+                className={`w-full flex items-center gap-3 px-6 py-3 text-sm transition-all text-left border-r-2
                   ${active
-                    ? 'text-violet-600 bg-violet-50 border-r-2 border-violet-500 font-medium'
-                    : 'text-zinc-400 hover:text-zinc-700 hover:bg-zinc-50'
+                    ? 'pp-app-active-rail border-[rgba(255,118,105,0.48)] font-medium'
+                    : 'border-transparent text-[var(--pp-text-soft)] hover:text-white hover:bg-white/5'
                   }`}
               >
-                <span className={active ? 'text-violet-600' : 'text-zinc-300'}>{icons[item.id]}</span>
+                <span className={active ? 'text-[var(--pp-coral)]' : 'text-[var(--pp-text-muted)]'}>{icons[item.id]}</span>
                 {t(`nav.${item.id}`)}
               </button>
             </div>
@@ -93,23 +93,23 @@ export default function Sidebar({ screen, setScreen, user, profile, onLogout, on
       <div className="px-4 pb-2">
         <LanguageSwitcher compact />
       </div>
-      <div className="px-5 py-4 border-t border-zinc-100">
+      <div className="px-5 py-4 border-t pp-app-border">
         <button
           onClick={() => setScreen('profile')}
-          className="w-full flex items-center gap-3 text-left rounded-xl px-2 py-2 hover:bg-zinc-50 transition-colors"
+          className="w-full flex items-center gap-3 text-left rounded-xl px-2 py-2 hover:bg-white/5 transition-colors"
         >
-          <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-xs font-semibold text-violet-700 shrink-0">
+          <div className="w-8 h-8 rounded-full bg-[rgba(255,118,105,0.18)] flex items-center justify-center text-xs font-semibold text-[var(--pp-coral)] shrink-0">
             {avatarLetter || 'S'}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium text-zinc-800 truncate">{displayName}</div>
-            <div className="text-xs text-zinc-400">{planLabel || t('auth.freePlan')}</div>
+            <div className="text-sm font-medium text-white truncate">{displayName}</div>
+            <div className="text-xs pp-app-muted">{planLabel || t('auth.freePlan')}</div>
           </div>
         </button>
 
         <button
           onClick={onLogout}
-          className="mt-3 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+          className="mt-3 w-full rounded-xl border pp-app-border px-3 py-2.5 text-sm pp-app-subtle hover:bg-white/5 transition-colors"
         >
           {t('auth.logout')}
         </button>

@@ -128,9 +128,9 @@ function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset, copy }) {
             inset: 0,
             backfaceVisibility: 'hidden',
             borderRadius: 20,
-            background: '#fff',
-            border: '1px solid #E4E4E7',
-            boxShadow: isTop ? '0 24px 64px rgba(0,0,0,0.13)' : '0 6px 20px rgba(0,0,0,0.06)',
+            background: 'linear-gradient(180deg, rgba(14,21,36,0.98), rgba(8,14,26,0.94))',
+            border: '1px solid rgba(130,147,183,0.16)',
+            boxShadow: isTop ? '0 24px 64px rgba(0,0,0,0.32)' : '0 10px 24px rgba(0,0,0,0.18)',
             display: 'flex',
             flexDirection: 'column',
           }}
@@ -174,20 +174,20 @@ function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset, copy }) {
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 20px' }}>
-            <span style={{ fontSize: 11, color: '#71717a' }}>{card.topic}</span>
+            <span style={{ fontSize: 11, color: '#9eabc7' }}>{card.topic}</span>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: DIFF_DOT[card.difficulty] || '#a1a1aa' }} />
-            <span style={{ fontSize: 11, color: '#a1a1aa' }}>{card.difficulty}</span>
+            <span style={{ fontSize: 11, color: '#66728f' }}>{card.difficulty}</span>
           </div>
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 28px 8px' }}>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#d4d4d8', marginBottom: 18 }}>{copy.promptLabel}</div>
-            <p style={{ fontSize: 20, fontWeight: 600, fontFamily: 'Syne,sans-serif', letterSpacing: '-0.01em', color: '#111110', textAlign: 'center', lineHeight: 1.4 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#66728f', marginBottom: 18 }}>{copy.promptLabel}</div>
+            <p style={{ fontSize: 20, fontWeight: 600, fontFamily: 'Syne,sans-serif', letterSpacing: '-0.01em', color: '#edf2ff', textAlign: 'center', lineHeight: 1.4 }}>
               {card.front}
             </p>
           </div>
 
           <div style={{ padding: '12px 20px 20px', textAlign: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#d4d4d8' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#66728f' }}>
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1.5v4M5.5 7.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><circle cx="5.5" cy="9.5" r=".5" fill="currentColor"/></svg>
               {copy.tapToFlipShort}
             </div>
@@ -201,8 +201,8 @@ function SwipeCard({ card, onSwipe, zIndex, isTop, stackOffset, copy }) {
             backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
             borderRadius: 20,
-            background: 'linear-gradient(145deg,#6c63ff,#8b5cf6)',
-            boxShadow: '0 24px 64px rgba(108,99,255,0.3)',
+            background: 'linear-gradient(145deg, rgba(255,118,105,0.92), rgba(31,184,173,0.75))',
+            boxShadow: '0 24px 64px rgba(255,118,105,0.2)',
             display: 'flex',
             flexDirection: 'column',
           }}
@@ -477,17 +477,17 @@ export default function Flashcards({
           <button
             onClick={pending ? () => loadLatestFlashcards(activeDocumentId) : generateFlashcards}
             disabled={!activeDocument || loading || checkingExisting || (!activeDocumentIsPdf && !pending)}
-            className="text-xs px-3.5 py-2 border border-zinc-200 rounded-lg text-zinc-500 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            className="text-xs px-3.5 py-2 border pp-app-border rounded-lg text-[var(--pp-text-soft)] hover:bg-white/5 transition-colors disabled:opacity-50"
           >
             {pending ? t('flashcards.checkStatus') : t('flashcards.generate')}
           </button>
         )}
       />
 
-      <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start pt-6 px-6 bg-zinc-50">
+      <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start pt-6 px-6">
         {focusedTopic && (
-          <div className="w-full max-w-md mb-4 rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm text-violet-800">
-            <div className="font-semibold mb-1">
+          <div className="w-full max-w-md mb-4 rounded-2xl border border-[rgba(255,118,105,0.18)] bg-[rgba(255,118,105,0.1)] px-4 py-3 text-sm text-[var(--pp-text-soft)]">
+            <div className="font-semibold text-white mb-1">
               {isRoadmapFocus && stageDayNumber ? `Current roadmap stage · Day ${stageDayNumber}` : t('flashcards.focusedOn')}
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -495,7 +495,7 @@ export default function Flashcards({
               {isManualFocus && (
                 <button
                   onClick={clearStudyFocus}
-                  className="text-xs px-2.5 py-1 rounded-full border border-violet-200 bg-white text-violet-600 hover:bg-violet-100 transition-colors"
+                  className="text-xs px-2.5 py-1 rounded-full border pp-app-border bg-white/5 text-[var(--pp-cyan)] hover:bg-white/10 transition-colors"
                 >
                   {t('flashcards.clearFocus')}
                 </button>
@@ -505,7 +505,7 @@ export default function Flashcards({
         )}
 
         {!activeDocument ? (
-          <div className="max-w-md w-full rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-500">
+          <div className="max-w-md w-full rounded-2xl pp-app-card p-6 text-sm pp-app-subtle">
             {t('flashcards.selectDocument')}
           </div>
         ) : !activeDocumentIsPdf ? (
@@ -513,13 +513,13 @@ export default function Flashcards({
             {t('flashcards.pdfOnly')}
           </div>
         ) : checkingExisting ? (
-          <div className="max-w-md w-full rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
-            <div className="font-semibold text-zinc-800 mb-2">{t('flashcards.checkingTitle')}</div>
+          <div className="max-w-md w-full rounded-2xl pp-app-card p-6 text-sm pp-app-subtle shadow-sm">
+            <div className="font-semibold text-white mb-2">{t('flashcards.checkingTitle')}</div>
             <div>{t('flashcards.checkingSub')}</div>
           </div>
         ) : pending ? (
-          <div className="max-w-md w-full rounded-2xl border border-violet-100 bg-white p-6 text-sm text-zinc-600 shadow-sm">
-            <div className="font-semibold text-zinc-800 mb-2">{t('flashcards.preparing')}</div>
+          <div className="max-w-md w-full rounded-2xl pp-app-card p-6 text-sm pp-app-subtle shadow-sm">
+            <div className="font-semibold text-white mb-2">{t('flashcards.preparing')}</div>
             <div>{t('flashcards.preparingSub')}</div>
           </div>
         ) : error ? (
@@ -527,7 +527,7 @@ export default function Flashcards({
             {error}
           </div>
         ) : !allCards.length ? (
-          <div className="max-w-md w-full rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-500">
+          <div className="max-w-md w-full rounded-2xl pp-app-card p-6 text-sm pp-app-subtle">
             {focusedTopic
               ? t('flashcards.focusedEmpty', { topic: focusedTopic })
               : t('flashcards.empty')}
@@ -545,20 +545,20 @@ export default function Flashcards({
                 <div className="flex items-center gap-3 text-xs flex-wrap">
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                    <span className="text-zinc-500">{t('flashcards.knownCount', { count: known.length })}</span>
+                    <span className="pp-app-subtle">{t('flashcards.knownCount', { count: known.length })}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-red-400" />
-                    <span className="text-zinc-500">{t('flashcards.skippedCount', { count: skipped.length })}</span>
+                    <span className="pp-app-subtle">{t('flashcards.skippedCount', { count: skipped.length })}</span>
                   </div>
                 </div>
-                <span className="text-xs text-zinc-400">{t('flashcards.leftCount', { count: deck.length })}</span>
+                <span className="text-xs pp-app-muted">{t('flashcards.leftCount', { count: deck.length })}</span>
               </div>
 
-              <div className="h-1.5 bg-zinc-200 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${pct}%`, background: '#6c63ff' }}
+                  style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #ff7669, #66f7e2)' }}
                 />
               </div>
             </div>
@@ -566,17 +566,17 @@ export default function Flashcards({
             {done ? (
               <div className="flex flex-col items-center justify-center flex-1 max-w-xs text-center w-full">
                 <div className="text-5xl mb-5">{known.length >= total * 0.7 ? '🎉' : '📚'}</div>
-                <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 24, fontWeight: 600, letterSpacing: '-0.02em', color: '#111110', marginBottom: 6 }}>
+                <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 24, fontWeight: 600, letterSpacing: '-0.02em', color: '#edf2ff', marginBottom: 6 }}>
                   {t('flashcards.roundComplete')}
                 </h2>
-                <p className="text-zinc-400 text-sm mb-8">
+                <p className="pp-app-muted text-sm mb-8">
                   {t('flashcards.roundSummary', {
                     known: known.length,
                     skipped: skipped.length,
                   })}
                 </p>
                 {focusedTopic && (
-                  <div className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 mb-6">
+                  <div className="w-full rounded-2xl pp-app-card px-4 py-3 text-sm pp-app-subtle mb-6">
                     {skipped.length > 0
                       ? t('flashcards.roundWeakTopic', { topic: focusedTopic })
                       : t('flashcards.roundStrongTopic', { topic: focusedTopic })}
@@ -585,7 +585,7 @@ export default function Flashcards({
 
                 <div style={{ position: 'relative', width: 112, height: 112, marginBottom: 28 }}>
                   <svg style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }} viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="42" fill="none" stroke="#E4E4E7" strokeWidth="9" />
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(130,147,183,0.2)" strokeWidth="9" />
                     <circle
                       cx="50"
                       cy="50"
@@ -600,10 +600,10 @@ export default function Flashcards({
                     />
                   </svg>
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 22, fontWeight: 700, color: '#111110' }}>
+                    <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 22, fontWeight: 700, color: '#edf2ff' }}>
                       {Math.round((known.length / Math.max(total, 1)) * 100)}%
                     </span>
-                    <span style={{ fontSize: 10, color: '#a1a1aa' }}>{t('flashcards.knownPct')}</span>
+                    <span style={{ fontSize: 10, color: '#66728f' }}>{t('flashcards.knownPct')}</span>
                   </div>
                 </div>
 
@@ -611,28 +611,27 @@ export default function Flashcards({
                   {skipped.length > 0 && (
                     <button
                       onClick={reviewSkipped}
-                      className="w-full py-3 rounded-xl text-sm font-semibold text-white"
-                      style={{ background: '#6c63ff' }}
+                      className="w-full py-3 rounded-xl text-sm font-semibold text-white pp-app-button-primary"
                     >
                       {t('flashcards.reviewSkipped', { count: skipped.length })}
                     </button>
                   )}
                   <button
                     onClick={restart}
-                    className="w-full py-3 rounded-xl text-sm font-medium border border-zinc-200 text-zinc-600 hover:bg-white transition-all"
+                    className="w-full py-3 rounded-xl text-sm font-medium border pp-app-border text-[var(--pp-text-soft)] hover:bg-white/5 transition-all"
                   >
                     {t('flashcards.startOver')}
                   </button>
                   <button
                     onClick={() => setScreen('quiz')}
-                    className="w-full py-3 rounded-xl text-sm font-medium text-violet-600 hover:bg-violet-50 transition-all"
+                    className="w-full py-3 rounded-xl text-sm font-medium text-[var(--pp-cyan)] hover:bg-white/5 transition-all"
                   >
                     {t('flashcards.takeQuiz')}
                   </button>
                   {focusedTopic && (
                     <button
                       onClick={() => openStudyFocus?.({ documentId: activeDocumentId, topic: focusedTopic, screen: 'quiz', origin: 'flashcards_result' })}
-                      className="w-full py-3 rounded-xl text-sm font-medium border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 transition-all"
+                      className="w-full py-3 rounded-xl text-sm font-medium border border-[rgba(255,118,105,0.2)] bg-[rgba(255,118,105,0.1)] text-white hover:bg-[rgba(255,118,105,0.14)] transition-all"
                     >
                       {t('flashcards.quizOnTopic', { topic: focusedTopic })}
                     </button>
@@ -646,7 +645,7 @@ export default function Flashcards({
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <div className="text-center">
                         <div className="text-4xl mb-2">✨</div>
-                        <div className="text-sm text-zinc-400">{t('flashcards.allDone')}</div>
+                        <div className="text-sm pp-app-muted">{t('flashcards.allDone')}</div>
                       </div>
                     </div>
                   ) : (
@@ -668,9 +667,9 @@ export default function Flashcards({
                 </div>
 
                 {doneCount === 0 && deck.length > 0 && (
-                  <div className="flex items-center gap-6 mb-4 text-[11px] text-zinc-400">
+                  <div className="flex items-center gap-6 mb-4 text-[11px] pp-app-muted">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-5 h-5 rounded-full bg-red-50 border border-red-100 flex items-center justify-center">
+                      <div className="w-5 h-5 rounded-full bg-red-500/10 border border-red-400/20 flex items-center justify-center">
                         <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 1.5l5 5M6.5 1.5l-5 5" stroke="#ef4444" strokeWidth="1.3" strokeLinecap="round" /></svg>
                       </div>
                       {t('flashcards.skip')}
@@ -678,7 +677,7 @@ export default function Flashcards({
                     <span>{t('flashcards.tapToFlipShort')}</span>
                     <div className="flex items-center gap-1.5">
                       {t('flashcards.knowIt')}
-                      <div className="w-5 h-5 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                      <div className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-400/20 flex items-center justify-center">
                         <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3 5.5L6.5 2" stroke="#22c55e" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
                       </div>
                     </div>
@@ -688,7 +687,7 @@ export default function Flashcards({
                 {deck.length > 0 && (
                   <div className="flex items-center gap-7">
                     <button onClick={() => handleAction('left')} className="flex flex-col items-center gap-1.5 group active:scale-95 transition-transform">
-                      <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center transition-all group-hover:bg-red-50" style={{ border: '2px solid #FCA5A5', boxShadow: '0 4px 16px rgba(239,68,68,0.15)' }}>
+                      <div className="w-14 h-14 rounded-full bg-[rgba(8,14,26,0.9)] flex items-center justify-center transition-all group-hover:bg-red-500/10" style={{ border: '2px solid rgba(248,113,113,0.45)', boxShadow: '0 6px 18px rgba(239,68,68,0.15)' }}>
                         <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
                           <path d="M5 5l12 12M17 5L5 17" stroke="#ef4444" strokeWidth="2.4" strokeLinecap="round" />
                         </svg>
@@ -697,17 +696,17 @@ export default function Flashcards({
                     </button>
 
                     <button className="flex flex-col items-center gap-1.5 group">
-                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center group-hover:bg-zinc-50 transition-all" style={{ border: '1.5px solid #E4E4E7', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                      <div className="w-10 h-10 rounded-full bg-[rgba(8,14,26,0.9)] flex items-center justify-center group-hover:bg-white/5 transition-all" style={{ border: '1.5px solid rgba(130,147,183,0.16)', boxShadow: '0 2px 10px rgba(0,0,0,0.16)' }}>
                         <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                          <path d="M2 7.5a5.5 5.5 0 1 0 5.5-5.5" stroke="#a1a1aa" strokeWidth="1.3" strokeLinecap="round" />
-                          <path d="M2 7.5L4 5M2 7.5L4 10" stroke="#a1a1aa" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M2 7.5a5.5 5.5 0 1 0 5.5-5.5" stroke="#9eabc7" strokeWidth="1.3" strokeLinecap="round" />
+                          <path d="M2 7.5L4 5M2 7.5L4 10" stroke="#9eabc7" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </div>
-                      <span style={{ fontSize: 10, color: '#a1a1aa' }}>{t('flashcards.flipOnCard')}</span>
+                      <span style={{ fontSize: 10, color: '#66728f' }}>{t('flashcards.flipOnCard')}</span>
                     </button>
 
                     <button onClick={() => handleAction('right')} className="flex flex-col items-center gap-1.5 group active:scale-95 transition-transform">
-                      <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center transition-all group-hover:bg-emerald-50" style={{ border: '2px solid #86EFAC', boxShadow: '0 4px 16px rgba(34,197,94,0.15)' }}>
+                      <div className="w-14 h-14 rounded-full bg-[rgba(8,14,26,0.9)] flex items-center justify-center transition-all group-hover:bg-emerald-500/10" style={{ border: '2px solid rgba(74,222,128,0.45)', boxShadow: '0 6px 18px rgba(34,197,94,0.15)' }}>
                         <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
                           <path d="M4 11.5L9 16.5L18 6" stroke="#22c55e" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
@@ -717,7 +716,7 @@ export default function Flashcards({
                   </div>
                 )}
 
-                <div style={{ marginTop: 14, fontSize: 10, color: '#d4d4d8', display: 'flex', gap: 16 }}>
+                <div style={{ marginTop: 14, fontSize: 10, color: '#66728f', display: 'flex', gap: 16 }}>
                   <span>{t('flashcards.gestureSkip')}</span>
                   <span>{t('flashcards.gestureFlip')}</span>
                   <span>{t('flashcards.gestureKnow')}</span>

@@ -4,8 +4,8 @@
   "description": "Upload your notes and study with AI — quizzes, flashcards, mock tests and your personal AI tutor.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#6c63ff",
+  "background_color": "#050810",
+  "theme_color": "#ff7669",
   "orientation": "portrait-primary",
   "icons": [
     {

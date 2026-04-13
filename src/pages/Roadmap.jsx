@@ -5,21 +5,21 @@ import { useT } from '../i18n'
 import { studyPlanApi } from '../lib/api'
 
 const difficultyStyles = {
-  easy: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-  medium: 'bg-amber-50 text-amber-700 border-amber-100',
-  hard: 'bg-rose-50 text-rose-700 border-rose-100',
+  easy: 'bg-emerald-500/10 text-emerald-300 border-emerald-400/20',
+  medium: 'bg-amber-500/10 text-amber-300 border-amber-400/20',
+  hard: 'bg-rose-500/10 text-rose-300 border-rose-400/20',
 }
 
 const masteryStyles = {
-  WEAK: 'bg-red-50 text-red-700 border-red-100',
-  IMPROVING: 'bg-amber-50 text-amber-700 border-amber-100',
-  STRONG: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  WEAK: 'bg-red-500/10 text-red-300 border-red-400/20',
+  IMPROVING: 'bg-amber-500/10 text-amber-300 border-amber-400/20',
+  STRONG: 'bg-emerald-500/10 text-emerald-300 border-emerald-400/20',
 }
 
 function TopicChip({ children, tone = 'neutral' }) {
   const toneClass = tone === 'violet'
-    ? 'bg-violet-50 text-violet-700 border-violet-100'
-    : 'bg-zinc-50 text-zinc-600 border-zinc-100'
+    ? 'border-[rgba(255,118,105,0.2)] bg-[rgba(255,118,105,0.12)] text-white'
+    : 'pp-app-chip'
 
   return (
     <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClass}`}>
@@ -30,10 +30,10 @@ function TopicChip({ children, tone = 'neutral' }) {
 
 function ScoreCard({ label, value, hint }) {
   return (
-    <div className="rounded-xl border border-zinc-100 bg-white px-4 py-3">
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">{label}</div>
-      <div className="text-lg font-semibold text-zinc-900">{value}</div>
-      <div className="text-xs text-zinc-500 mt-1">{hint}</div>
+    <div className="rounded-xl pp-app-card px-4 py-3">
+      <div className="text-[10px] font-semibold uppercase tracking-widest pp-app-muted mb-1">{label}</div>
+      <div className="text-lg font-semibold text-white">{value}</div>
+      <div className="text-xs pp-app-subtle mt-1">{hint}</div>
     </div>
   )
 }
@@ -45,17 +45,17 @@ function PlanDayCard({ day, session, isCurrent }) {
       ? 'TODAY'
       : 'UP NEXT'
   const statusClass = session?.completed_at
-    ? masteryStyles[session.mastery_status] || 'bg-zinc-50 text-zinc-700 border-zinc-100'
+    ? masteryStyles[session.mastery_status] || 'pp-app-chip'
     : isCurrent
-      ? 'bg-violet-50 text-violet-700 border-violet-100'
-      : 'bg-zinc-50 text-zinc-500 border-zinc-100'
+      ? 'border-[rgba(255,118,105,0.2)] bg-[rgba(255,118,105,0.12)] text-white'
+      : 'pp-app-chip'
 
   return (
-    <div className={`rounded-2xl border p-5 transition-colors ${isCurrent ? 'border-violet-200 bg-violet-50/40' : 'border-zinc-100 bg-white'}`}>
+    <div className={`rounded-2xl border p-5 transition-colors ${isCurrent ? 'border-[rgba(255,118,105,0.2)] bg-[rgba(255,118,105,0.08)]' : 'pp-app-card'}`}>
       <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Day {day.dayNumber}</div>
-          <div className="text-base font-semibold text-zinc-900">{day.summary}</div>
+          <div className="text-[10px] font-semibold uppercase tracking-widest pp-app-muted mb-1">Day {day.dayNumber}</div>
+          <div className="text-base font-semibold text-white">{day.summary}</div>
         </div>
         <div className="flex flex-wrap gap-2">
           <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${difficultyStyles[day.difficulty] || difficultyStyles.medium}`}>
@@ -71,11 +71,11 @@ function PlanDayCard({ day, session, isCurrent }) {
         {day.topics.map((topic) => <TopicChip key={`${day.dayNumber}-${topic}`} tone={isCurrent ? 'violet' : 'neutral'}>{topic}</TopicChip>)}
       </div>
 
-      <div className="text-sm text-zinc-600 leading-relaxed mb-3">{day.focusReason}</div>
-      <div className="text-xs text-zinc-500">{day.objective}</div>
+      <div className="text-sm pp-app-subtle leading-relaxed mb-3">{day.focusReason}</div>
+      <div className="text-xs pp-app-muted">{day.objective}</div>
       {session?.completed_at && session?.overall_score !== null && session?.overall_score !== undefined && (
-        <div className="mt-3 border-t border-zinc-100 pt-3 text-xs text-zinc-500">
-          Mission score: <span className="font-semibold text-zinc-800">{session.overall_score}%</span>
+        <div className="mt-3 border-t pp-app-border pt-3 text-xs pp-app-muted">
+          Mission score: <span className="font-semibold text-white">{session.overall_score}%</span>
         </div>
       )}
     </div>
@@ -164,8 +164,8 @@ export default function Roadmap({
         subtitle={activeDocument ? `${activeDocument.subject} · ${totalDays || (analysis?.totalTopics || 0)} study days` : 'Select a document to build your study plan.'}
         action={activeDocument && totalDays ? (
           <div className="flex items-center gap-3">
-            <span className="text-xs text-zinc-400">Roadmap progress</span>
-            <div className="w-24 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+            <span className="text-xs pp-app-muted">Roadmap progress</span>
+            <div className="w-24 h-1.5 bg-white/8 rounded-full overflow-hidden">
               <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${overallProgress}%` }} />
             </div>
             <span className="text-xs font-medium text-emerald-500">{overallProgress}%</span>
@@ -180,7 +180,7 @@ export default function Roadmap({
               <button
                 key={document.id}
                 onClick={() => setSelectedDocumentId(document.id)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${activeDocument?.id === document.id ? 'border-violet-200 bg-violet-50 text-violet-700' : 'border-zinc-200 bg-white text-zinc-500 hover:border-violet-200 hover:text-violet-600'}`}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${activeDocument?.id === document.id ? 'pp-app-chip-active' : 'pp-app-chip hover:border-[rgba(102,247,226,0.28)] hover:text-[var(--pp-cyan)]'}`}
               >
                 {document.title}
               </button>
@@ -195,36 +195,36 @@ export default function Roadmap({
         )}
 
         {!documents.length ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
+          <div className="rounded-2xl pp-app-card px-6 py-10 text-sm pp-app-subtle">
             Upload a PDF first and we will turn it into a daily study system.
           </div>
         ) : !activeDocument ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
+          <div className="rounded-2xl pp-app-card px-6 py-10 text-sm pp-app-subtle">
             Select a document above to build its roadmap.
           </div>
         ) : !activeDocumentIsPdf ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
+          <div className="rounded-2xl pp-app-card px-6 py-10 text-sm pp-app-subtle">
             Study roadmaps are available for PDF documents only right now.
           </div>
         ) : !planData?.plan ? (
-          <div className="rounded-3xl border border-zinc-100 bg-white px-6 py-7 sm:px-8">
+          <div className="rounded-3xl pp-app-card px-6 py-7 sm:px-8">
             <div className="max-w-2xl">
               <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-500 mb-2">Study Coach</div>
-              <div className="text-2xl font-semibold text-zinc-900 mb-3">Turn this PDF into a clean study roadmap</div>
-              <p className="text-sm text-zinc-600 leading-relaxed mb-6">
+              <div className="text-2xl font-semibold text-white mb-3">Turn this PDF into a clean study roadmap</div>
+              <p className="text-sm pp-app-subtle leading-relaxed mb-6">
                 We will extract topics and subtopics, estimate difficulty, spot repeated concepts, and build a 7 to 30 day roadmap. Your daily mission now lives in its own separate section.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={handleGeneratePlan}
                   disabled={generatingPlan}
-                  className="px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-sm hover:bg-zinc-700 transition-colors disabled:opacity-60"
+                  className="px-5 py-2.5 rounded-xl text-white text-sm transition-colors disabled:opacity-60 pp-app-button-primary"
                 >
                   Build my roadmap
                 </button>
                 <button
                   onClick={() => setScreen('missions')}
-                  className="px-5 py-2.5 rounded-xl border border-zinc-200 text-zinc-600 text-sm hover:bg-zinc-50 transition-colors"
+                  className="px-5 py-2.5 rounded-xl border pp-app-border text-[var(--pp-text-soft)] text-sm hover:bg-white/5 transition-colors"
                 >
                   Open daily missions
                 </button>
@@ -234,16 +234,16 @@ export default function Roadmap({
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-5">
             <div className="space-y-5">
-              <div className="rounded-3xl border border-zinc-100 bg-white p-5">
+              <div className="rounded-3xl pp-app-card p-5">
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Content Analysis</div>
-                    <div className="text-lg font-semibold text-zinc-900">{analysis?.totalTopics || 0} extracted topics</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-widest pp-app-muted mb-2">Content Analysis</div>
+                    <div className="text-lg font-semibold text-white">{analysis?.totalTopics || 0} extracted topics</div>
                   </div>
                   <button
                     onClick={handleGeneratePlan}
                     disabled={generatingPlan}
-                    className="text-xs px-3.5 py-2 rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                    className="text-xs px-3.5 py-2 rounded-lg border pp-app-border text-[var(--pp-text-soft)] hover:bg-white/5 transition-colors disabled:opacity-50"
                   >
                     Refresh roadmap
                   </button>
@@ -256,26 +256,26 @@ export default function Roadmap({
                 </div>
 
                 <div className="mb-4">
-                  <div className="text-sm font-semibold text-zinc-900 mb-2">Repeated concepts</div>
+                  <div className="text-sm font-semibold text-white mb-2">Repeated concepts</div>
                   <div className="flex flex-wrap gap-2">
                     {(analysis?.repeatedConcepts || []).length ? analysis.repeatedConcepts.map((concept) => (
                       <TopicChip key={concept.term}>
                         {concept.term} {concept.count ? `· ${concept.count}x` : ''}
                       </TopicChip>
                     )) : (
-                      <div className="text-sm text-zinc-500">Repeated concepts will appear here once the PDF is analyzed deeply.</div>
+                      <div className="text-sm pp-app-subtle">Repeated concepts will appear here once the PDF is analyzed deeply.</div>
                     )}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4">
-                  <div className="text-sm font-semibold text-violet-900 mb-1">Daily missions are separate now</div>
-                  <div className="text-sm text-violet-800 leading-relaxed mb-3">
+                <div className="rounded-2xl border border-[rgba(255,118,105,0.18)] bg-[linear-gradient(135deg,rgba(255,118,105,0.14),rgba(102,247,226,0.06))] p-4">
+                  <div className="text-sm font-semibold text-white mb-1">Daily missions are separate now</div>
+                  <div className="text-sm pp-app-subtle leading-relaxed mb-3">
                     Roadmap stays focused on the full study plan. Open the Daily Missions tab when you want today&apos;s 20-minute task, quiz, mini test, and feedback.
                   </div>
                   <button
                     onClick={() => setScreen('missions')}
-                    className="px-4 py-2 rounded-lg bg-white border border-violet-200 text-violet-700 text-sm hover:bg-violet-100 transition-colors"
+                    className="px-4 py-2 rounded-lg border pp-app-border text-[var(--pp-cyan)] text-sm hover:bg-white/5 transition-colors"
                   >
                     Open today&apos;s mission
                   </button>
@@ -283,9 +283,9 @@ export default function Roadmap({
               </div>
             </div>
 
-            <div className="rounded-3xl border border-zinc-100 bg-white p-5">
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">7 to 30 Day Roadmap</div>
-              <div className="text-lg font-semibold text-zinc-900 mb-4">Daily progression from easy to hard</div>
+            <div className="rounded-3xl pp-app-card p-5">
+              <div className="text-[10px] font-semibold uppercase tracking-widest pp-app-muted mb-2">7 to 30 Day Roadmap</div>
+              <div className="text-lg font-semibold text-white mb-4">Daily progression from easy to hard</div>
               <div className="grid gap-3 max-h-[70vh] overflow-y-auto pr-1">
                 {roadmapDays.map((day) => (
                   <PlanDayCard

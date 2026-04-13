@@ -57,64 +57,66 @@ const SECTIONS = [
 
 export default function LegalDataPage({ onBack, onOpenAuth }) {
   return (
-    <div className="min-h-screen bg-zinc-50" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div className="border-b border-zinc-200 bg-white/95 backdrop-blur-sm sticky top-0 z-20">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <button
-            onClick={onBack}
-            className="text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
-          >
-            ← Back
-          </button>
-          <div className="font-bold text-lg text-zinc-900" style={{ fontFamily: 'Syne, sans-serif' }}>
-            Prep<span className="text-violet-600">Pal</span>
-          </div>
-          <button
-            onClick={onOpenAuth}
-            className="text-sm font-medium px-4 py-2 rounded-lg text-white transition-opacity hover:opacity-90"
-            style={{ background: '#111110' }}
-          >
-            Log in
-          </button>
-        </div>
-      </div>
-
-      <main className="max-w-4xl mx-auto px-6 py-10 sm:py-14">
-        <div className="bg-white border border-zinc-200 rounded-3xl shadow-sm p-6 sm:p-10">
-          <div className="mb-10">
-            <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-violet-500 mb-3">Legal</div>
-            <h1
-              className="text-3xl sm:text-4xl font-bold text-zinc-900 tracking-tight mb-3"
-              style={{ fontFamily: 'Syne, sans-serif', letterSpacing: '-0.03em' }}
+    <div className="pp-public-shell" style={{ fontFamily: "'Satoshi', 'DM Sans', system-ui, sans-serif" }}>
+      <div className="pp-content">
+        <div className="sticky top-0 z-20 px-4 pt-5 sm:px-6">
+          <div className="max-w-5xl mx-auto pp-glass rounded-full px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+            <button
+              onClick={onBack}
+              className="pp-button-secondary px-4 py-2 text-sm"
             >
-              Privacy Policy
-            </h1>
-            <p className="text-sm text-zinc-500 leading-relaxed max-w-2xl">
-              Effective April 10, 2026. This Privacy Policy explains how PrepPal collects, uses, stores, and shares information when you use the platform.
-            </p>
-          </div>
-
-          <div className="space-y-8">
-            {SECTIONS.map((section) => (
-              <section key={section.title}>
-                <h2
-                  className="text-xl font-semibold text-zinc-900 mb-3"
-                  style={{ fontFamily: 'Syne, sans-serif' }}
-                >
-                  {section.title}
-                </h2>
-                <div className="space-y-3">
-                  {section.points.map((point) => (
-                    <p key={point} className="text-sm text-zinc-600 leading-7">
-                      {point}
-                    </p>
-                  ))}
-                </div>
-              </section>
-            ))}
+              ← Back
+            </button>
+            <div className="text-center">
+              <div className="font-display text-lg font-semibold text-white">PrepPal</div>
+              <div className="text-[10px] uppercase tracking-[0.26em] pp-dim">Privacy</div>
+            </div>
+            <button
+              onClick={onOpenAuth}
+              className="pp-button-primary px-4 py-2 text-sm"
+            >
+              Log in
+            </button>
           </div>
         </div>
-      </main>
+
+        <main className="max-w-5xl mx-auto px-4 py-8 sm:px-6 sm:py-10">
+          <div className="pp-glass-strong rounded-[2rem] p-6 sm:p-10">
+            <div className="mb-10">
+              <div className="pp-section-label mb-4">Legal document</div>
+              <h1
+                className="font-display text-4xl sm:text-5xl font-semibold text-white tracking-[-0.05em] mb-4"
+              >
+                Privacy
+                <span className="pp-gradient-text"> Policy</span>
+              </h1>
+              <p className="text-sm sm:text-base pp-muted leading-8 max-w-3xl">
+                Effective April 10, 2026. This Privacy Policy explains how PrepPal collects, uses, stores, and shares
+                information when you use the platform.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              {SECTIONS.map((section) => (
+                <section key={section.title} className="rounded-[1.5rem] border border-[rgba(130,147,183,0.16)] bg-[rgba(255,255,255,0.02)] p-5 sm:p-6">
+                  <h2
+                    className="font-display text-2xl font-semibold text-white tracking-[-0.03em] mb-4"
+                  >
+                    {section.title}
+                  </h2>
+                  <div className="space-y-3">
+                    {section.points.map((point) => (
+                      <p key={point} className="text-sm sm:text-[15px] text-[var(--pp-text-soft)] leading-8">
+                        {point}
+                      </p>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

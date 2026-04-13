@@ -1,344 +1,434 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
-// Real features with specific, outcome-focused descriptions
-const WHAT_YOU_GET = [
-  { emoji: '💬', title: 'Chat tutor from your notes', desc: 'Ask "explain Calvin cycle" — AI answers from YOUR Biology PDF, not Wikipedia.' },
-  { emoji: '❓', title: 'Instant quiz generation',    desc: 'Upload notes → get 20 MCQs in 10 seconds. From your exact syllabus.' },
-  { emoji: '📋', title: 'Full mock test + AI marking', desc: 'Written exam, timed, AI marks each answer and shows what you missed.' },
-  { emoji: '🎯', title: 'Weak topic finder',          desc: '"You score 42% on Thermodynamics." Know exactly what to fix before exams.' },
-  { emoji: '🎓', title: 'Virtual viva examiner',      desc: 'AI professor asks you questions orally. Confidence score at the end.' },
-  { emoji: '🇮🇳', title: 'Hindi + English',           desc: 'Switch languages anytime. Built for NEET, JEE, Boards, CA — any Indian exam.' },
+const FEATURE_CARDS = [
+  {
+    title: 'Chat grounded in your notes',
+    desc: 'Ask for explanations, summaries, or fast revision and keep the answers anchored to your uploaded material.',
+    accent: 'var(--pp-cyan)',
+  },
+  {
+    title: 'Quizzes in seconds',
+    desc: 'Turn any chapter PDF into MCQs, drills, and weak-topic checks without setting up anything manually.',
+    accent: 'var(--pp-coral)',
+  },
+  {
+    title: 'Mock tests with feedback',
+    desc: 'Run timed practice sessions, review mistakes, and see exactly which concepts need another pass.',
+    accent: 'var(--pp-cyan)',
+  },
 ]
 
-export default function Landing({ onGetStarted, onLogin }) {
+const STUDY_SYSTEM = [
+  {
+    title: 'Upload once, revise everywhere',
+    desc: 'Your notes become a reusable study base for chat, quizzes, flashcards, mock tests, and roadmap planning.',
+    meta: 'PDF-native',
+  },
+  {
+    title: 'Switch between tutor and examiner',
+    desc: 'PrepPal can teach a topic gently, then immediately test you on the same material from the same source.',
+    meta: 'Learn + test',
+  },
+  {
+    title: 'Track what actually needs work',
+    desc: 'Weaknesses are surfaced by topic so revision time goes to the chapters most likely to move your score.',
+    meta: 'Score-aware',
+  },
+  {
+    title: 'Built for Indian exam flow',
+    desc: 'Fast setup, Hindi + English support, and a format that feels useful for NEET, JEE, boards, CA, and beyond.',
+    meta: 'India-first',
+  },
+]
+
+const COMMAND_STEPS = [
+  {
+    cmd: 'upload biology-ch04.pdf',
+    label: 'Ingest your chapter',
+    text: 'Drop in the file once and PrepPal turns it into a study-ready knowledge base.',
+  },
+  {
+    cmd: 'quiz --topic photosynthesis --count 20',
+    label: 'Generate active recall',
+    text: 'Move from reading to testing with instant MCQs based on that exact chapter.',
+  },
+  {
+    cmd: 'mocktest --timed --review',
+    label: 'Stress-test before exam day',
+    text: 'Run a full practice session and get AI feedback on what you missed and why.',
+  },
+]
+
+const EXAM_TAGS = ['NEET', 'JEE', 'Boards', 'CA', 'UPSC']
+
+export default function Landing({ onGetStarted, onLogin, onShowPrivacy, onShowTerms }) {
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 20)
-    window.addEventListener('scroll', fn)
-    return () => window.removeEventListener('scroll', fn)
+    const onScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', onScroll)
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  function jumpToFeatures() {
+    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
-    <div className="min-h-screen bg-white" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-
-      {/* ── Sticky nav ─────────────────────────────────────────────── */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${scrolled ? 'bg-white/96 backdrop-blur-sm border-b border-zinc-100' : 'bg-transparent'}`}>
-        <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
-          <div className="font-bold text-lg" style={{ fontFamily: 'Syne, sans-serif' }}>
-            Prep<span className="text-violet-600">Pal</span>
-          </div>
-          <button onClick={onLogin} className="text-sm text-zinc-500 hover:text-zinc-800 transition-colors">
-            Log in
-          </button>
-        </div>
-      </nav>
-
-      {/* ══════════════════════════════════════════════════════════════
-          HERO — everything above the fold must convert
-      ══════════════════════════════════════════════════════════════ */}
-      <section className="pt-24 pb-12 px-5 text-center">
-        <div className="max-w-2xl mx-auto">
-
-          {/* Honest badge — no fake numbers */}
-          <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Free during early access
-          </div>
-
-          {/* Specific headline — tells them exactly what happens */}
-          <h1 className="text-4xl sm:text-5xl font-bold text-zinc-900 mb-4 leading-tight"
-            style={{ fontFamily: 'Syne, sans-serif', letterSpacing: '-0.03em' }}>
-            Upload your notes.<br />
-            <span className="text-violet-600">Get quizzes in 10 seconds.</span>
-          </h1>
-
-          {/* One specific sentence — not a feature list */}
-          <p className="text-base text-zinc-500 mb-8 leading-relaxed max-w-lg mx-auto">
-            PrepPal reads your exact PDF and generates quizzes, flashcards, mock tests, and a chat tutor — all from your own study material. Not generic AI. Your notes.
-          </p>
-
-          {/* PRIMARY CTA — big, single, clear */}
-          <button
-            onClick={onGetStarted}
-            className="w-full sm:w-auto px-8 py-4 rounded-2xl text-white font-bold text-base transition-all hover:opacity-90 active:scale-98 mb-3"
-            style={{ background: '#6c63ff' }}
-          >
-            Try it free — upload your first PDF →
-          </button>
-
-          {/* Google sign-in hint — remove friction */}
-          <div className="flex items-center justify-center gap-2 text-xs text-zinc-400 mb-3">
-            <svg width="14" height="14" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.01c-.72.48-1.63.76-2.7.76-2.08 0-3.84-1.4-4.47-3.29H1.88v2.07A8 8 0 008.98 17"/><path fill="#FBBC05" d="M4.51 10.52A4.8 4.8 0 014.26 9c0-.52.09-1.02.25-1.52V5.41H1.88A8 8 0 00.98 9c0 1.29.31 2.51.9 3.59z"/><path fill="#EA4335" d="M8.98 3.58c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 008.98 1a8 8 0 00-7.1 4.41l2.63 2.07c.63-1.89 2.38-3.3 4.47-3.9"/></svg>
-            Sign up with Google in one tap · No password needed
-          </div>
-
-          <p className="text-xs text-zinc-400">Free forever · No credit card · Takes 30 seconds</p>
-        </div>
-
-        {/* ── App screenshot mockup — shows chat (the wow moment) ── */}
-        <div className="max-w-3xl mx-auto mt-12 hidden sm:block">
-          <div className="rounded-2xl border border-zinc-200 overflow-hidden shadow-lg shadow-zinc-900/8">
-            {/* Browser bar */}
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-zinc-50 border-b border-zinc-100">
-              <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-300" />
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-300" />
-                <div className="w-2.5 h-2.5 rounded-full bg-green-300" />
-              </div>
-              <div className="flex-1 mx-3 bg-white border border-zinc-200 rounded px-3 py-0.5 text-[11px] text-zinc-400 text-center">
-                preppal.in
-              </div>
-            </div>
-            {/* Chat window — shows the core value */}
-            <div className="bg-white flex" style={{ height: 300 }}>
-              <div className="w-40 border-r border-zinc-100 p-4 shrink-0">
-                <div className="font-bold text-sm mb-4" style={{ fontFamily: 'Syne,sans-serif' }}>
-                  Prep<span className="text-violet-600">Pal</span>
+    <div className="pp-public-shell" style={{ fontFamily: "'Satoshi', 'DM Sans', system-ui, sans-serif" }}>
+      <div className="pp-content">
+        <nav className={`fixed inset-x-0 top-0 z-40 transition-all duration-200 ${scrolled ? 'pt-3' : 'pt-5'}`}>
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className={`pp-glass flex items-center justify-between rounded-full px-4 sm:px-6 py-3 ${scrolled ? 'shadow-2xl' : ''}`}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold pp-glass-strong">
+                  <span className="pp-gradient-text">P</span>
                 </div>
-                {['Dashboard','Chat','Quiz','Mock Test','Progress'].map((item,i) => (
-                  <div key={item} className={`text-xs px-2 py-1.5 rounded-lg mb-1 ${i===1 ? 'bg-violet-50 text-violet-700 font-medium' : 'text-zinc-400'}`}>
-                    {item}
+                <div>
+                  <div className="font-display text-lg font-semibold leading-none text-white">PrepPal</div>
+                  <div className="text-[10px] uppercase tracking-[0.26em] pp-dim">Study command center</div>
+                </div>
+              </div>
+              <div className="hidden md:flex items-center gap-3 text-sm">
+                <button onClick={jumpToFeatures} className="pp-button-secondary px-4 py-2.5">
+                  Product
+                </button>
+                <button onClick={onLogin} className="pp-button-primary px-5 py-2.5">
+                  Log in
+                </button>
+              </div>
+              <button onClick={onLogin} className="md:hidden pp-button-primary px-4 py-2.5 text-sm">
+                Enter
+              </button>
+            </div>
+          </div>
+        </nav>
+
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-12 sm:pt-32 sm:pb-16">
+          <section className="grid lg:grid-cols-[1.08fr_0.92fr] gap-8 items-center">
+            <div className="relative">
+              <div className="pp-orb top-8 left-12 w-32 h-32 bg-[rgba(255,118,105,0.22)]" />
+              <div className="pp-orb top-28 right-12 w-28 h-28 bg-[rgba(102,247,226,0.16)]" />
+
+              <div className="pp-pill mb-5">
+                <span className="w-2 h-2 rounded-full bg-[var(--pp-cyan)] animate-pulse" />
+                Early access is live
+              </div>
+
+              <div className="pp-section-label mb-5">Themed for focus, not fluff</div>
+
+              <h1
+                className="font-display text-5xl sm:text-6xl lg:text-7xl font-semibold leading-[0.94] tracking-[-0.04em] text-white max-w-3xl"
+              >
+                Study like you are
+                <br />
+                operating a
+                <span className="pp-gradient-text"> mission console.</span>
+              </h1>
+
+              <p className="mt-6 max-w-2xl text-base sm:text-lg leading-8 pp-muted">
+                Upload your notes and turn PrepPal into a tutor, quiz engine, mock-test examiner, and revision cockpit.
+                The vibe is darker, sharper, and more intentional, but the job is still simple: help you score better from your own material.
+              </p>
+
+              <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                <button onClick={onGetStarted} className="pp-button-primary px-6 py-4 text-base">
+                  Start free
+                  <span aria-hidden="true">→</span>
+                </button>
+                <button onClick={jumpToFeatures} className="pp-button-secondary px-6 py-4 text-base">
+                  Explore the system
+                </button>
+              </div>
+
+              <div className="mt-8 flex flex-wrap gap-2.5">
+                {EXAM_TAGS.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full border border-[rgba(130,147,183,0.18)] bg-[rgba(255,255,255,0.03)] px-3 py-1.5 text-xs font-medium tracking-[0.18em] text-[var(--pp-text-soft)]"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              <div className="mt-10 grid sm:grid-cols-3 gap-3">
+                {[
+                  { value: '10 sec', label: 'to spin up a fresh quiz' },
+                  { value: '2 modes', label: 'teacher and examiner' },
+                  { value: '100%', label: 'built around your PDFs' },
+                ].map((stat) => (
+                  <div key={stat.label} className="pp-glass rounded-2xl p-4">
+                    <div className="font-display text-2xl font-semibold text-white">{stat.value}</div>
+                    <div className="mt-1 text-sm pp-dim">{stat.label}</div>
                   </div>
                 ))}
               </div>
-              <div className="flex-1 flex flex-col p-4">
-                <div className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest mb-3">
-                  Chat — Biology Ch 4–8.pdf
+            </div>
+
+            <div className="lg:pl-4">
+              <div className="pp-terminal">
+                <div className="pp-terminal-bar">
+                  <span className="pp-terminal-dot bg-[#ff5f57]" />
+                  <span className="pp-terminal-dot bg-[#febc2e]" />
+                  <span className="pp-terminal-dot bg-[#28c840]" />
+                  <div className="ml-3 text-xs tracking-[0.28em] uppercase pp-dim">study-session.preppal</div>
                 </div>
-                <div className="flex flex-col gap-3 flex-1">
-                  <div className="self-end bg-violet-600 text-white text-xs px-3 py-2 rounded-xl rounded-br-sm max-w-xs">
-                    Explain photosynthesis from my notes
+
+                <div className="p-5 sm:p-6">
+                  <div className="rounded-2xl border border-[rgba(130,147,183,0.18)] bg-[rgba(255,255,255,0.02)] p-4">
+                    <div className="flex items-center justify-between gap-4 text-xs pp-dim">
+                      <span className="tracking-[0.24em] uppercase">Active document</span>
+                      <span className="pp-kbd">BIO-04</span>
+                    </div>
+                    <div className="mt-2 text-lg font-semibold text-white">Biology Chapter 4: Photosynthesis</div>
+                    <div className="mt-1 text-sm pp-muted">Source-aware tutoring, testing, and review for one uploaded chapter.</div>
                   </div>
-                  <div className="self-start flex gap-2 items-end">
-                    <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center text-[9px] font-bold text-violet-600 shrink-0">AI</div>
-                    <div className="bg-zinc-50 border border-zinc-100 text-zinc-700 text-xs px-3 py-2 rounded-xl rounded-bl-sm max-w-sm leading-relaxed">
-                      Based on <strong>your notes (page 12)</strong> — Photosynthesis occurs in chloroplasts. Light-dependent reactions happen in the thylakoid membrane, producing ATP and NADPH. The Calvin cycle uses these to fix CO₂...
+
+                  <div className="mt-5 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="pp-kbd mt-0.5">01</div>
+                      <div className="flex-1 rounded-2xl border border-[rgba(130,147,183,0.16)] bg-[rgba(255,255,255,0.02)] px-4 py-3">
+                        <div className="pp-mono text-sm text-[var(--pp-cyan)]">$ explain calvin cycle from my notes</div>
+                        <p className="mt-2 text-sm leading-7 pp-muted">
+                          PrepPal summarizes page-linked notes, then points to where the ATP/NADPH transition is explained so revision stays grounded.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="pp-kbd mt-0.5">02</div>
+                      <div className="flex-1 rounded-2xl border border-[rgba(130,147,183,0.16)] bg-[rgba(255,255,255,0.02)] px-4 py-3">
+                        <div className="pp-mono text-sm text-[var(--pp-coral)]">$ generate 20 mcqs on weak areas</div>
+                        <p className="mt-2 text-sm leading-7 pp-muted">
+                          The next action becomes a quiz pack targeted at chloroplast structure, limiting factors, and equation recall.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div className="rounded-2xl border border-[rgba(130,147,183,0.16)] bg-[rgba(255,255,255,0.02)] p-4">
+                        <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--pp-cyan)]">Signal</div>
+                        <div className="mt-2 text-2xl font-display text-white">42%</div>
+                        <div className="mt-1 text-sm pp-dim">Current score on thermodynamics</div>
+                      </div>
+                      <div className="rounded-2xl border border-[rgba(130,147,183,0.16)] bg-[rgba(255,255,255,0.02)] p-4">
+                        <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--pp-coral)]">Next action</div>
+                        <div className="mt-2 text-lg font-semibold text-white">Run a timed mock test</div>
+                        <div className="mt-1 text-sm pp-dim">15 questions · 18 minutes · review enabled</div>
+                      </div>
                     </div>
                   </div>
-                  <div className="self-end bg-violet-600 text-white text-xs px-3 py-2 rounded-xl rounded-br-sm max-w-xs">
-                    Generate 10 MCQs on this topic
-                  </div>
-                  <div className="self-start flex gap-2 items-end">
-                    <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center text-[9px] font-bold text-violet-600 shrink-0">AI</div>
-                    <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs px-3 py-2 rounded-xl rounded-bl-sm">
-                      ✓ Generated 10 MCQs from your notes. Ready to practice?
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-2 mt-3 items-center border-t border-zinc-100 pt-3">
-                  <div className="flex-1 text-xs text-zinc-300">Ask anything from your notes…</div>
-                  <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#6c63ff' }}>
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 5h8M9 5L6 2M9 5L6 8" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {['Quiz', 'Flashcards', 'Mock test', 'Roadmap'].map((item) => (
+                      <span key={item} className="rounded-full border border-[rgba(130,147,183,0.16)] px-3 py-1.5 text-xs pp-dim">
+                        {item}
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
 
-      {/* ══════════════════════════════════════════════════════════════
-          HONEST PROOF — no fake numbers, just real differentiators
-      ══════════════════════════════════════════════════════════════ */}
-      <section className="py-6 border-y border-zinc-100 bg-zinc-50">
-        <div className="max-w-4xl mx-auto px-5 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 text-center">
-          {[
-            { v: '₹0',    l: 'Free to start · always' },
-            { v: '100%',  l: 'From your own notes' },
-            { v: '10 sec', l: 'To generate a full quiz' },
-            { v: '🇮🇳',   l: 'Built for Indian exams' },
-          ].map(s => (
-            <div key={s.l}>
-              <div className="text-lg font-bold text-zinc-900" style={{ fontFamily: 'Syne,sans-serif' }}>{s.v}</div>
-              <div className="text-xs text-zinc-400">{s.l}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════
-          vs ChatGPT — answer the biggest objection immediately
-      ══════════════════════════════════════════════════════════════ */}
-      <section className="py-16 px-5">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-bold text-zinc-900"
-              style={{ fontFamily: 'Syne, sans-serif', letterSpacing: '-0.025em' }}>
-              "Why not just use ChatGPT?"
-            </h2>
-            <p className="text-sm text-zinc-400 mt-2">Every student asks this. Here's the real difference.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-4 sm:p-5">
-              <div className="text-xs font-semibold text-zinc-500 mb-3">ChatGPT / Gemini</div>
-              {[
-                "Generic answers — not your syllabus",
-                "Paste notes every single time",
-                "Hallucinations you can't verify",
-                "No quiz, no mock test, no marking",
-                "No weak topic tracking",
-              ].map((t, i) => (
-                <div key={i} className="flex items-start gap-2 mb-2">
-                  <span className="text-red-400 text-sm mt-0.5 shrink-0">✗</span>
-                  <span className="text-xs text-zinc-500 leading-snug">{t}</span>
+          <section className="mt-10 grid lg:grid-cols-3 gap-4">
+            {FEATURE_CARDS.map((item, index) => (
+              <div
+                key={item.title}
+                className={`pp-glass rounded-[1.75rem] p-6 pp-hover-rise ${index === 1 ? 'pp-cyan-ring' : ''}`}
+              >
+                <div
+                  className="w-11 h-11 rounded-2xl flex items-center justify-center text-sm font-bold mb-5"
+                  style={{ background: `${item.accent}1a`, color: item.accent, border: `1px solid ${item.accent}33` }}
+                >
+                  0{index + 1}
                 </div>
-              ))}
-            </div>
-            <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 sm:p-5">
-              <div className="text-xs font-semibold text-violet-700 mb-3">PrepPal</div>
-              {[
-                "Answers only from YOUR notes",
-                "Upload once, use forever",
-                "Answers you can check in your PDF",
-                "Full mock tests with AI marking",
-                "Shows your weakest topics",
-              ].map((t, i) => (
-                <div key={i} className="flex items-start gap-2 mb-2">
-                  <span className="text-violet-500 text-sm mt-0.5 shrink-0">✓</span>
-                  <span className="text-xs text-violet-800 leading-snug">{t}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════
-          FEATURES — outcome focused, not feature listed
-      ══════════════════════════════════════════════════════════════ */}
-      <section className="py-16 px-5 bg-zinc-50">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-10">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-violet-500 mb-2">What you get</div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-zinc-900"
-              style={{ fontFamily: 'Syne, sans-serif', letterSpacing: '-0.025em' }}>
-              A full study system. Not just tools.
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {WHAT_YOU_GET.map((f, i) => (
-              <div key={i} className="bg-white border border-zinc-100 rounded-2xl p-5 hover:border-violet-100 transition-all">
-                <div className="text-xl mb-3">{f.emoji}</div>
-                <div className="text-sm font-semibold text-zinc-900 mb-1.5">{f.title}</div>
-                <div className="text-xs text-zinc-400 leading-relaxed">{f.desc}</div>
+                <h2 className="font-display text-2xl font-semibold tracking-[-0.03em] text-white">{item.title}</h2>
+                <p className="mt-3 text-sm leading-7 pp-muted">{item.desc}</p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
+          </section>
 
-      {/* ══════════════════════════════════════════════════════════════
-          HOW IT WORKS — simple 3 steps
-      ══════════════════════════════════════════════════════════════ */}
-      <section className="py-16 px-5">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-bold text-zinc-900"
-              style={{ fontFamily: 'Syne, sans-serif', letterSpacing: '-0.025em' }}>
-              Ready in 3 steps
-            </h2>
-          </div>
-          <div className="flex flex-col gap-4">
-            {[
-              { n: '1', title: 'Sign up free', desc: 'One tap with Google. No password. No card.', color: '#EEF2FF', accent: '#6c63ff' },
-              { n: '2', title: 'Upload your PDF', desc: 'Drop your Biology notes, Chemistry chapter, any PDF. PrepPal reads it in seconds.', color: '#ECFDF5', accent: '#059669' },
-              { n: '3', title: 'Start studying', desc: 'Ask questions, take quizzes, run a full mock test — all from your own notes.', color: '#FFFBEB', accent: '#d97706' },
-            ].map((s, i) => (
-              <div key={i} className="flex items-center gap-5 p-5 rounded-2xl border border-zinc-100 bg-white">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold shrink-0"
-                  style={{ background: s.color, color: s.accent }}>
-                  {s.n}
+          <section id="features" className="mt-20 grid lg:grid-cols-[0.92fr_1.08fr] gap-8 items-start">
+            <div className="pp-glass-strong rounded-[2rem] p-6 sm:p-8">
+              <div className="pp-section-label">Command flow</div>
+              <h2 className="mt-4 font-display text-3xl sm:text-4xl font-semibold tracking-[-0.04em] text-white">
+                A faster path from
+                <span className="pp-gradient-text"> upload</span> to exam-ready.
+              </h2>
+              <p className="mt-4 text-sm sm:text-base leading-8 pp-muted">
+                The reference site works because it feels like a real operating surface. PrepPal now follows the same idea:
+                each panel should suggest action, progress, and control instead of looking like a generic SaaS card grid.
+              </p>
+
+              <div className="mt-8 space-y-4">
+                {COMMAND_STEPS.map((step, index) => (
+                  <div key={step.cmd} className="rounded-2xl border border-[rgba(130,147,183,0.18)] bg-[rgba(255,255,255,0.02)] p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-sm font-semibold text-white">{step.label}</span>
+                      <span className="pp-kbd">0{index + 1}</span>
+                    </div>
+                    <div className="mt-3 pp-mono text-sm text-[var(--pp-cyan)]">$ {step.cmd}</div>
+                    <p className="mt-2 text-sm leading-7 pp-muted">{step.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              {STUDY_SYSTEM.map((item, index) => (
+                <div key={item.title} className={`pp-glass rounded-[1.75rem] p-6 pp-hover-rise ${index % 2 === 0 ? 'pp-cyan-ring' : ''}`}>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="pp-section-label">{item.meta}</span>
+                    <span className="text-xs tracking-[0.22em] uppercase pp-dim">Module {index + 1}</span>
+                  </div>
+                  <h3 className="mt-5 font-display text-2xl font-semibold tracking-[-0.03em] text-white">{item.title}</h3>
+                  <p className="mt-3 text-sm leading-7 pp-muted">{item.desc}</p>
                 </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-20">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+              <div>
+                <div className="pp-section-label">Everything from one PDF</div>
+                <h2 className="mt-3 font-display text-3xl sm:text-4xl font-semibold tracking-[-0.04em] text-white">
+                  One upload powers the whole
+                  <span className="pp-gradient-text"> study system.</span>
+                </h2>
+              </div>
+              <div className="text-sm pp-dim max-w-md">
+                No fake dashboards. No vanity metrics. Just tools that help you understand, test, and retain your actual syllabus.
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              {[
+                {
+                  title: 'Chat tutor',
+                  desc: 'Ask questions from your chapter and get revision-ready answers instead of broad internet fluff.',
+                  accent: 'text-[var(--pp-cyan)]',
+                },
+                {
+                  title: 'Quiz engine',
+                  desc: 'Generate drill sets for one topic or the whole file when you need quick active recall.',
+                  accent: 'text-[var(--pp-coral)]',
+                },
+                {
+                  title: 'Mock tests',
+                  desc: 'Switch into timed mode before an exam and see where speed or confidence is slipping.',
+                  accent: 'text-[var(--pp-cyan)]',
+                },
+                {
+                  title: 'Weakness tracking',
+                  desc: 'Spot the chapters dragging down your score instead of revising everything evenly.',
+                  accent: 'text-[var(--pp-coral)]',
+                },
+              ].map((card) => (
+                <div key={card.title} className="pp-glass rounded-[1.75rem] p-6 pp-hover-rise">
+                  <div className={`text-[11px] uppercase tracking-[0.26em] ${card.accent}`}>Capability</div>
+                  <h3 className="mt-4 font-display text-2xl font-semibold tracking-[-0.03em] text-white">{card.title}</h3>
+                  <p className="mt-3 text-sm leading-7 pp-muted">{card.desc}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-20">
+            <div className="pp-glass-strong rounded-[2rem] p-6 sm:p-8 lg:p-10">
+              <div className="grid lg:grid-cols-[0.95fr_1.05fr] gap-8 items-center">
                 <div>
-                  <div className="text-sm font-semibold text-zinc-900">{s.title}</div>
-                  <div className="text-xs text-zinc-400 mt-0.5">{s.desc}</div>
+                  <div className="pp-section-label">Pricing in the same style</div>
+                  <h2 className="mt-4 font-display text-3xl sm:text-4xl font-semibold tracking-[-0.04em] text-white">
+                    Less dashboard noise.
+                    <span className="pp-gradient-text"> More study time.</span>
+                  </h2>
+                  <p className="mt-4 text-sm sm:text-base leading-8 pp-muted">
+                    The new theme keeps the interface premium and high-signal, but the offer stays simple: get started free, upgrade only if you need more volume.
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-3 text-sm pp-dim">
+                    <span className="pp-pill">No credit card</span>
+                    <span className="pp-pill">Free during early access</span>
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-3 gap-4">
+                  {[
+                    { plan: 'Free', price: '₹0', desc: '3 PDFs · daily practice', highlight: false },
+                    { plan: 'Pro', price: '₹99', desc: 'Unlimited quizzes, chat, mocks', highlight: true },
+                    { plan: 'Institute', price: '₹999', desc: 'For coaching teams and batches', highlight: false },
+                  ].map((tier) => (
+                    <div
+                      key={tier.plan}
+                      className={`rounded-[1.75rem] p-5 border ${tier.highlight ? 'border-[rgba(255,118,105,0.4)] bg-[linear-gradient(180deg,rgba(255,118,105,0.16),rgba(8,14,26,0.82))] shadow-[0_16px_48px_rgba(255,118,105,0.18)]' : 'border-[rgba(130,147,183,0.18)] bg-[rgba(255,255,255,0.03)]'}`}
+                    >
+                      <div className="text-[11px] uppercase tracking-[0.26em] pp-dim">{tier.plan}</div>
+                      <div className="mt-4 font-display text-4xl font-semibold text-white">{tier.price}</div>
+                      <div className="mt-1 text-sm pp-dim">per month</div>
+                      <p className="mt-5 text-sm leading-7 pp-muted">{tier.desc}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </div>
+          </section>
 
-      {/* ══════════════════════════════════════════════════════════════
-          PRICING — simple, honest
-      ══════════════════════════════════════════════════════════════ */}
-      <section className="py-16 px-5 bg-zinc-50">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-zinc-900 mb-3"
-            style={{ fontFamily: 'Syne, sans-serif', letterSpacing: '-0.025em' }}>
-            Less than a samosa a day
-          </h2>
-          <p className="text-sm text-zinc-400 mb-10">
-            BYJU's costs ₹5,000/month. PrepPal starts at ₹0.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {[
-              { plan: 'Free',      price: '₹0',   desc: '3 PDFs · 20 messages/day',     h: false },
-              { plan: 'Pro',       price: '₹99',  desc: 'Unlimited everything',          h: true  },
-              { plan: 'Institute', price: '₹999', desc: 'For coaching centres',          h: false },
-            ].map(p => (
-              <div key={p.plan} className={`rounded-2xl p-5 text-center ${p.h ? 'bg-zinc-900 ring-2 ring-violet-500' : 'bg-white border border-zinc-100'}`}>
-                {p.h && <div className="text-[10px] font-bold text-violet-400 uppercase tracking-widest mb-2">Most popular</div>}
-                <div className={`text-[11px] uppercase tracking-widest mb-1 ${p.h ? 'text-zinc-400' : 'text-zinc-400'}`}>{p.plan}</div>
-                <div className={`text-3xl font-bold mb-1 ${p.h ? 'text-white' : 'text-zinc-900'}`} style={{ fontFamily: 'Syne,sans-serif' }}>{p.price}</div>
-                <div className={`text-[11px] mb-3 ${p.h ? 'text-zinc-400' : 'text-zinc-400'}`}>/month</div>
-                <div className={`text-xs ${p.h ? 'text-zinc-500' : 'text-zinc-500'}`}>{p.desc}</div>
+          <section className="mt-20">
+            <div className="pp-terminal relative">
+              <div className="pp-terminal-bar">
+                <span className="pp-terminal-dot bg-[#ff5f57]" />
+                <span className="pp-terminal-dot bg-[#febc2e]" />
+                <span className="pp-terminal-dot bg-[#28c840]" />
+                <div className="ml-3 text-xs tracking-[0.28em] uppercase pp-dim">launch.preppal</div>
               </div>
-            ))}
+              <div className="p-7 sm:p-10 text-center">
+                <div className="pp-section-label justify-center">Final call</div>
+                <h2 className="mt-4 font-display text-3xl sm:text-5xl font-semibold tracking-[-0.05em] text-white">
+                  Upload your first PDF and
+                  <span className="pp-gradient-text"> flip the system on.</span>
+                </h2>
+                <p className="mt-4 max-w-2xl mx-auto text-sm sm:text-base leading-8 pp-muted">
+                  No demo maze. No fake “AI magic.” Just give PrepPal your material and let it start teaching, testing, and tracking from there.
+                </p>
+                <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+                  <button onClick={onGetStarted} className="pp-button-primary px-6 py-4 text-base">
+                    Continue with Google
+                  </button>
+                  <button onClick={onGetStarted} className="pp-button-secondary px-6 py-4 text-base">
+                    Sign up with email
+                  </button>
+                </div>
+                <div className="mt-5 text-xs tracking-[0.18em] uppercase pp-dim">
+                  Free forever to start · Built for intense revision
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <footer className="max-w-6xl mx-auto px-4 sm:px-6 pb-10">
+          <div className="pp-glass rounded-[1.75rem] px-5 py-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <div className="font-display text-xl font-semibold text-white">PrepPal</div>
+              <div className="mt-1 text-xs tracking-[0.24em] uppercase pp-dim">Study command center</div>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 text-sm pp-muted">
+              <button onClick={onShowPrivacy} className="hover:text-[var(--pp-cyan)] transition-colors">
+                Privacy Policy
+              </button>
+              <button onClick={onShowTerms} className="hover:text-[var(--pp-cyan)] transition-colors">
+                Terms & Conditions
+              </button>
+              <button onClick={onLogin} className="hover:text-[var(--pp-coral)] transition-colors">
+                Log in
+              </button>
+            </div>
+            <div className="text-xs tracking-[0.18em] uppercase pp-dim">© 2026 PrepPal</div>
           </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════
-          FINAL CTA — specific, no fake claims
-      ══════════════════════════════════════════════════════════════ */}
-      <section className="py-16 px-5">
-        <div className="max-w-xl mx-auto">
-          <div className="bg-zinc-900 rounded-3xl px-8 py-12 text-center">
-            <div className="text-3xl mb-4">📄</div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3"
-              style={{ fontFamily: 'Syne, sans-serif', letterSpacing: '-0.025em' }}>
-              Upload your first PDF.<br />See what happens.
-            </h2>
-            <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
-              No demo. No tour. Just upload your notes and watch PrepPal quiz you on them in 10 seconds.
-            </p>
-
-            {/* Google sign-in button — show it right here */}
-            <button onClick={onGetStarted}
-              className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl font-semibold text-sm mb-3 transition-all hover:opacity-90"
-              style={{ background: '#fff', color: '#111110' }}>
-              <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.01c-.72.48-1.63.76-2.7.76-2.08 0-3.84-1.4-4.47-3.29H1.88v2.07A8 8 0 008.98 17"/><path fill="#FBBC05" d="M4.51 10.52A4.8 4.8 0 014.26 9c0-.52.09-1.02.25-1.52V5.41H1.88A8 8 0 00.98 9c0 1.29.31 2.51.9 3.59z"/><path fill="#EA4335" d="M8.98 3.58c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 008.98 1a8 8 0 00-7.1 4.41l2.63 2.07c.63-1.89 2.38-3.3 4.47-3.9"/></svg>
-              Continue with Google — it's free
-            </button>
-
-            <button onClick={onGetStarted}
-              className="w-full py-3 rounded-xl text-white font-medium text-sm transition-all hover:opacity-85"
-              style={{ background: '#6c63ff' }}>
-              Sign up with email instead
-            </button>
-
-            <div className="text-xs text-zinc-600 mt-4">No credit card · Free forever · Made in India 🇮🇳</div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-zinc-100 py-8 px-6">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="font-bold text-base" style={{ fontFamily: 'Syne,sans-serif' }}>
-            Prep<span className="text-violet-600">Pal</span>
-          </div>
-          <div className="flex items-center gap-5 text-xs text-zinc-400">
-            <span className="cursor-pointer hover:text-zinc-700">Privacy Policy</span>
-            <span className="cursor-pointer hover:text-zinc-700">Terms</span>
-            <button onClick={onLogin} className="hover:text-zinc-700">Log in</button>
-          </div>
-          <div className="text-xs text-zinc-400">© 2026 PrepPal · Made in India 🇮🇳</div>
-        </div>
-      </footer>
-
+        </footer>
+      </div>
     </div>
   )
 }

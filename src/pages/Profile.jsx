@@ -6,12 +6,12 @@ import { getDisplayName, getPlanLabel } from '../lib/documents'
 
 function StatTile({ label, value, hint }) {
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-      <div className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-400">{label}</div>
-      <div className="mt-3 text-2xl font-semibold text-zinc-900" style={{ fontFamily: 'Syne,sans-serif' }}>
+    <div className="rounded-2xl pp-app-card p-5">
+      <div className="text-xs font-medium uppercase tracking-[0.18em] pp-app-muted">{label}</div>
+      <div className="mt-3 text-2xl font-semibold text-white font-display">
         {value}
       </div>
-      <div className="mt-1 text-sm text-zinc-500">{hint}</div>
+      <div className="mt-1 text-sm pp-app-subtle">{hint}</div>
     </div>
   )
 }
@@ -85,42 +85,42 @@ export default function Profile({
         action={(
           <button
             onClick={onLogout}
-            className="text-xs px-3.5 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+            className="text-xs px-3.5 py-2 rounded-lg border border-[rgba(255,118,105,0.22)] text-[#ffd6cf] hover:bg-[rgba(255,118,105,0.08)] transition-colors"
           >
             {t('auth.logout')}
           </button>
         )}
       />
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-7 bg-zinc-50">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-7">
         <div className="max-w-5xl mx-auto">
           <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-5">
-            <section className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-7">
+            <section className="rounded-3xl pp-app-card p-6 sm:p-7">
               <div className="flex items-start gap-4 sm:gap-5">
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
                     alt={displayName}
-                    className="w-16 h-16 rounded-2xl object-cover border border-zinc-200"
+                    className="w-16 h-16 rounded-2xl object-cover border pp-app-border"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-2xl bg-violet-100 text-violet-700 flex items-center justify-center text-xl font-semibold shrink-0">
+                  <div className="w-16 h-16 rounded-2xl bg-[rgba(255,118,105,0.14)] text-[var(--pp-coral)] flex items-center justify-center text-xl font-semibold shrink-0 border border-[rgba(255,118,105,0.18)]">
                     {avatarLetter}
                   </div>
                 )}
 
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-400">{t('profile.account')}</div>
-                  <h2 className="mt-2 text-2xl font-semibold text-zinc-900 truncate" style={{ fontFamily: 'Syne,sans-serif' }}>
+                  <div className="text-xs font-medium uppercase tracking-[0.18em] pp-app-muted">{t('profile.account')}</div>
+                  <h2 className="mt-2 text-2xl font-semibold text-white truncate font-display">
                     {profile?.full_name || displayName}
                   </h2>
-                  <p className="mt-1 text-sm text-zinc-500 break-all">{profile?.email || user?.email || '-'}</p>
+                  <p className="mt-1 text-sm pp-app-subtle break-all">{profile?.email || user?.email || '-'}</p>
                   <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
+                    <span className="rounded-full bg-[rgba(255,118,105,0.12)] px-3 py-1 text-xs font-medium text-[var(--pp-coral)] border border-[rgba(255,118,105,0.18)]">
                       {planLabel}
                     </span>
                     {joinedOn && (
-                      <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs text-zinc-500">
+                      <span className="rounded-full bg-white/5 px-3 py-1 text-xs pp-app-subtle border pp-app-border">
                         {t('profile.joined', { date: joinedOn })}
                       </span>
                     )}
@@ -129,7 +129,7 @@ export default function Profile({
               </div>
 
               <form onSubmit={handleSave} className="mt-8">
-                <label className="block text-xs font-medium text-zinc-600 mb-2">{t('profile.fullName')}</label>
+                <label className="block text-xs font-medium pp-app-subtle mb-2">{t('profile.fullName')}</label>
                 <input
                   type="text"
                   value={fullName}
@@ -140,21 +140,21 @@ export default function Profile({
                   }}
                   placeholder={t('profile.namePlaceholder')}
                   maxLength={80}
-                  className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm text-zinc-800 outline-none transition-all focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                  className="w-full rounded-xl px-4 py-3 text-sm pp-app-input transition-all"
                 />
 
-                <div className="mt-3 text-xs text-zinc-400">
+                <div className="mt-3 text-xs pp-app-muted">
                   {t('profile.nameHint')}
                 </div>
 
                 {error && (
-                  <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  <div className="mt-4 rounded-xl border border-[rgba(255,118,105,0.2)] bg-[rgba(255,118,105,0.08)] px-4 py-3 text-sm text-[#ffd6cf]">
                     {error}
                   </div>
                 )}
 
                 {success && (
-                  <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                  <div className="mt-4 rounded-xl border border-[rgba(102,247,226,0.2)] bg-[rgba(102,247,226,0.08)] px-4 py-3 text-sm text-[var(--pp-cyan)]">
                     {success}
                   </div>
                 )}
@@ -163,7 +163,7 @@ export default function Profile({
                   <button
                     type="submit"
                     disabled={saving || appLoading}
-                    className="px-4 py-2.5 rounded-xl bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-700 transition-colors disabled:opacity-60"
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-colors disabled:opacity-60 pp-app-button-primary"
                   >
                     {saving ? t('profile.saving') : t('common.save')}
                   </button>
@@ -174,7 +174,7 @@ export default function Profile({
                       setError('')
                       setSuccess('')
                     }}
-                    className="px-4 py-2.5 rounded-xl border border-zinc-200 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+                    className="px-4 py-2.5 rounded-xl border pp-app-border text-sm pp-app-subtle hover:bg-white/5 transition-colors"
                   >
                     {t('common.cancel')}
                   </button>
@@ -182,31 +182,31 @@ export default function Profile({
               </form>
             </section>
 
-            <section className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-7">
-              <div className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-400">{t('profile.overview')}</div>
-              <div className="mt-4 space-y-4 text-sm text-zinc-600">
-                <div className="flex items-center justify-between gap-4 border-b border-zinc-100 pb-4">
+            <section className="rounded-3xl pp-app-card p-6 sm:p-7">
+              <div className="text-xs font-medium uppercase tracking-[0.18em] pp-app-muted">{t('profile.overview')}</div>
+              <div className="mt-4 space-y-4 text-sm pp-app-subtle">
+                <div className="flex items-center justify-between gap-4 border-b pp-app-border pb-4">
                   <span>{t('profile.email')}</span>
-                  <span className="text-zinc-900 break-all text-right">{profile?.email || user?.email || '-'}</span>
+                  <span className="text-white break-all text-right">{profile?.email || user?.email || '-'}</span>
                 </div>
-                <div className="flex items-center justify-between gap-4 border-b border-zinc-100 pb-4">
+                <div className="flex items-center justify-between gap-4 border-b pp-app-border pb-4">
                   <span>{t('profile.plan')}</span>
-                  <span className="text-zinc-900">{planLabel}</span>
+                  <span className="text-white">{planLabel}</span>
                 </div>
-                <div className="flex items-center justify-between gap-4 border-b border-zinc-100 pb-4">
+                <div className="flex items-center justify-between gap-4 border-b pp-app-border pb-4">
                   <span>{t('profile.uploadsUsed')}</span>
-                  <span className="text-zinc-900">{profile?.uploads_this_month ?? 0}</span>
+                  <span className="text-white">{profile?.uploads_this_month ?? 0}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span>{t('profile.messagesToday')}</span>
-                  <span className="text-zinc-900">{profile?.messages_today ?? 0}</span>
+                  <span className="text-white">{profile?.messages_today ?? 0}</span>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={onLogout}
-                className="mt-8 w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors"
+                className="mt-8 w-full rounded-2xl border border-[rgba(255,118,105,0.22)] bg-[rgba(255,118,105,0.08)] px-4 py-3 text-sm font-medium text-[#ffd6cf] hover:bg-[rgba(255,118,105,0.12)] transition-colors"
               >
                 {t('profile.logoutCta')}
               </button>

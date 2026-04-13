@@ -243,12 +243,12 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-zinc-50 overflow-hidden">
+    <div className="pp-app-shell flex h-screen overflow-hidden">
 
       {/* ── Mobile overlay backdrop ── */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+          className="fixed inset-0 bg-black/55 z-30 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -270,7 +270,7 @@ export default function App() {
       </div>
 
       {/* ── Main ── */}
-      <main className="relative flex flex-col flex-1 min-w-0 overflow-hidden" style={{ paddingBottom: 'var(--bottom-nav-height, 0)' }}>
+      <main className="pp-app-main relative flex flex-col flex-1 min-w-0 overflow-hidden" style={{ paddingBottom: 'var(--bottom-nav-height, 0)' }}>
         <PageErrorBoundary>
           <Page
             {...pageProps}

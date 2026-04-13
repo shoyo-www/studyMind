@@ -14,7 +14,7 @@ const SUBJECT_COLORS = [
 ]
 
 function HeatCell({ level }) {
-  const bg = level === 0 ? 'bg-zinc-100' : level === 1 ? 'bg-violet-100' : level === 2 ? 'bg-violet-300' : 'bg-violet-600'
+  const bg = level === 0 ? 'bg-white/8' : level === 1 ? 'bg-[rgba(255,118,105,0.18)]' : level === 2 ? 'bg-[rgba(255,118,105,0.45)]' : 'bg-[var(--pp-coral)]'
   return <div className={`aspect-square rounded-sm ${bg}`} />
 }
 
@@ -135,28 +135,28 @@ export default function Progress({
         title={t('progress.title')}
         subtitle={t('progress.subtitle')}
         action={
-          <button onClick={() => setScreen('mocktest')} className="px-4 py-2 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors">
+          <button onClick={() => setScreen('mocktest')} className="px-4 py-2 text-white text-sm rounded-xl transition-colors pp-app-button-primary">
             {t('progress.mockExam')}
           </button>
         }
       />
       <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 sm:py-7">
         {error && (
-          <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 rounded-xl border border-[rgba(255,118,105,0.2)] bg-[rgba(255,118,105,0.08)] px-4 py-3 text-sm text-[#ffd6cf]">
             {error}
           </div>
         )}
 
         {!documents.length ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
+          <div className="rounded-2xl pp-app-card px-6 py-10 text-sm pp-app-subtle">
             Upload a document and complete a quiz to unlock your live progress dashboard.
           </div>
         ) : (
           <>
-            <div className="mb-6 sm:mb-8 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 via-white to-emerald-50 px-5 py-5">
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-500 mb-2">Next Best Step</div>
-              <div className="text-lg font-semibold text-zinc-900 mb-2">{coachTitle}</div>
-              <div className="text-sm text-zinc-600 leading-relaxed mb-4">{coachDescription}</div>
+            <div className="mb-6 sm:mb-8 rounded-[1.7rem] pp-app-card px-5 py-5">
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--pp-coral)] mb-2">Next Best Step</div>
+              <div className="text-lg font-semibold text-white mb-2">{coachTitle}</div>
+              <div className="text-sm pp-app-subtle leading-relaxed mb-4">{coachDescription}</div>
               <div className="flex flex-wrap gap-3">
                 {topWeakTopic ? (
                   <>
@@ -167,7 +167,7 @@ export default function Progress({
                         screen: 'quiz',
                         origin: 'progress',
                       })}
-                      className="px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm hover:bg-zinc-700 transition-colors"
+                      className="px-4 py-2 rounded-xl text-white text-sm transition-colors pp-app-button-primary"
                     >
                       Take focused quiz
                     </button>
@@ -178,7 +178,7 @@ export default function Progress({
                         screen: 'flashcards',
                         origin: 'progress',
                       })}
-                      className="px-4 py-2 rounded-lg border border-violet-200 bg-white text-violet-700 text-sm hover:bg-violet-50 transition-colors"
+                      className="px-4 py-2 rounded-xl border pp-app-border bg-white/5 text-[var(--pp-cyan)] text-sm hover:bg-white/10 transition-colors"
                     >
                       Review with flashcards
                     </button>
@@ -187,13 +187,13 @@ export default function Progress({
                   <>
                     <button
                       onClick={() => setScreen('roadmap')}
-                      className="px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm hover:bg-zinc-700 transition-colors"
+                      className="px-4 py-2 rounded-xl text-white text-sm transition-colors pp-app-button-primary"
                     >
                       Open roadmap
                     </button>
                     <button
                       onClick={() => setScreen('mocktest')}
-                      className="px-4 py-2 rounded-lg border border-zinc-200 bg-white text-zinc-700 text-sm hover:bg-zinc-50 transition-colors"
+                      className="px-4 py-2 rounded-xl border pp-app-border bg-white/5 text-white text-sm hover:bg-white/10 transition-colors"
                     >
                       Take mock test
                     </button>
@@ -210,9 +210,9 @@ export default function Progress({
             {stats.mockTestsTotal > 0 && (
               <div className="mb-6 sm:mb-8">
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">Mock Test Performance</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-widest pp-app-muted">Mock Test Performance</div>
                   {stats.mockTestsInProgress > 0 && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' }}>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(255,118,105,0.12)', color: '#ffb3a7', border: '1px solid rgba(255,118,105,0.2)' }}>
                       {stats.mockTestsInProgress} in progress
                     </span>
                   )}
@@ -224,16 +224,16 @@ export default function Progress({
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-4 sm:mb-5">
-              <div className="bg-white border border-zinc-100 rounded-xl p-5">
-                <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300 mb-5">{t('progress.readiness')}</div>
+              <div className="pp-app-card rounded-xl p-5">
+                <div className="text-[10px] font-medium uppercase tracking-widest pp-app-muted mb-5">{t('progress.readiness')}</div>
                 <div className="flex flex-col gap-4">
                   {readiness.subjects.length ? readiness.subjects.map((subject, index) => (
                     <div key={subject.label}>
                       <div className="flex justify-between text-xs mb-1.5">
-                        <span className="text-zinc-600 font-medium">{subject.label}</span>
-                        <span className="text-zinc-400">{subject.pct}%</span>
+                        <span className="text-white font-medium">{subject.label}</span>
+                        <span className="pp-app-muted">{subject.pct}%</span>
                       </div>
-                      <div className="h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-700 ${SUBJECT_COLORS[index % SUBJECT_COLORS.length]}`}
                           style={{ width: `${subject.pct}%` }}
@@ -241,29 +241,29 @@ export default function Progress({
                       </div>
                     </div>
                   )) : (
-                    <div className="text-sm text-zinc-500">Your subject readiness will appear after your first upload.</div>
+                    <div className="text-sm pp-app-subtle">Your subject readiness will appear after your first upload.</div>
                   )}
                 </div>
-                <div className="mt-6 pt-5 border-t border-zinc-50">
+                <div className="mt-6 pt-5 border-t pp-app-border">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-zinc-400">{t('progress.overallReady')}</span>
-                    <span className="text-sm font-semibold text-zinc-800">{readiness.overallPct}%</span>
+                    <span className="text-xs pp-app-muted">{t('progress.overallReady')}</span>
+                    <span className="text-sm font-semibold text-white">{readiness.overallPct}%</span>
                   </div>
-                  <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-violet-500 to-violet-400 rounded-full transition-all duration-700" style={{ width: `${readiness.overallPct}%` }} />
+                  <div className="h-2 bg-white/8 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-[var(--pp-coral)] to-[var(--pp-cyan)] rounded-full transition-all duration-700" style={{ width: `${readiness.overallPct}%` }} />
                   </div>
-                  <p className="text-xs text-zinc-400 mt-2">
+                  <p className="text-xs pp-app-muted mt-2">
                     Based on {documents.length} uploaded {documents.length === 1 ? 'document' : 'documents'} and your quiz activity.
                   </p>
                 </div>
               </div>
 
-              <div className="bg-white border border-zinc-100 rounded-xl p-5">
-                <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300 mb-5">{t('progress.activity')}</div>
+              <div className="pp-app-card rounded-xl p-5">
+                <div className="text-[10px] font-medium uppercase tracking-widest pp-app-muted mb-5">{t('progress.activity')}</div>
                 <div className="grid grid-cols-7 gap-1.5">
                   {activity.cells.map((level, index) => <HeatCell key={index} level={level} />)}
                 </div>
-                <div className="mt-4 flex items-center justify-between text-[11px] text-zinc-300">
+                <div className="mt-4 flex items-center justify-between text-[11px] pp-app-muted">
                   <span>{t('progress.daysAgo')}</span>
                   <div className="flex items-center gap-1">
                     <span>{t('progress.less')}</span>
@@ -272,11 +272,11 @@ export default function Progress({
                   </div>
                   <span>{t('progress.today')}</span>
                 </div>
-                <div className="mt-5 pt-5 border-t border-zinc-50 flex items-center gap-3">
-                  <div className="w-9 h-9 bg-amber-50 rounded-lg flex items-center justify-center text-lg">🔥</div>
+                <div className="mt-5 pt-5 border-t pp-app-border flex items-center gap-3">
+                  <div className="w-9 h-9 bg-[rgba(255,118,105,0.12)] rounded-lg flex items-center justify-center text-lg border border-[rgba(255,118,105,0.18)]">🔥</div>
                   <div>
-                    <div className="text-sm font-semibold text-zinc-800">{t('progress.streak', { count: activity.streakDays || 0 })}</div>
-                    <div className="text-xs text-zinc-400">
+                    <div className="text-sm font-semibold text-white">{t('progress.streak', { count: activity.streakDays || 0 })}</div>
+                    <div className="text-xs pp-app-muted">
                       {activity.activeDays ? `${activity.activeDays} active days in the last 28.` : 'No study activity yet this month.'}
                     </div>
                   </div>
@@ -284,10 +284,10 @@ export default function Progress({
               </div>
             </div>
 
-            <div className="bg-white border border-zinc-100 rounded-xl p-5">
+            <div className="pp-app-card rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
-                <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300">{t('progress.weakTopics')}</div>
-                <button onClick={() => setScreen('quiz')} className="text-xs text-violet-600 hover:text-violet-800 transition-colors">{t('progress.practiceAll')}</button>
+                <div className="text-[10px] font-medium uppercase tracking-widest pp-app-muted">{t('progress.weakTopics')}</div>
+                <button onClick={() => setScreen('quiz')} className="text-xs text-[var(--pp-cyan)] hover:text-white transition-colors">{t('progress.practiceAll')}</button>
               </div>
               <div className="flex flex-col gap-2">
                 {weakTopics.length ? weakTopics.map((topic) => {
@@ -301,24 +301,24 @@ export default function Progress({
                         : 'bg-yellow-400'
 
                   return (
-                    <div key={topic.id} className="flex items-center gap-4 py-3 border-b border-zinc-50 last:border-0">
+                    <div key={topic.id} className="flex items-center gap-4 py-3 border-b pp-app-border last:border-0">
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm text-zinc-700 block truncate">{topic.topic}</span>
-                        <div className="text-xs text-zinc-400 mt-0.5">{topic.detail}</div>
-                        <div className="mt-1.5 h-1 bg-zinc-100 rounded-full overflow-hidden">
+                        <span className="text-sm text-white block truncate">{topic.topic}</span>
+                        <div className="text-xs pp-app-muted mt-0.5">{topic.detail}</div>
+                        <div className="mt-1.5 h-1 bg-white/8 rounded-full overflow-hidden">
                           <div className={`h-full rounded-full ${barColor}`} style={{ width: `${strength}%` }} />
                         </div>
                       </div>
-                      <span className={`text-xs font-semibold border px-2.5 py-1 rounded-full shrink-0 ${topic.score === null ? 'bg-zinc-50 text-zinc-500 border-zinc-200' : 'bg-red-50 text-red-500 border-red-100'}`}>
+                      <span className={`text-xs font-semibold border px-2.5 py-1 rounded-full shrink-0 ${topic.score === null ? 'bg-white/5 text-[var(--pp-text-soft)] border-[rgba(130,147,183,0.18)]' : 'bg-[rgba(255,118,105,0.08)] text-[#ffd6cf] border-[rgba(255,118,105,0.18)]'}`}>
                         {topic.score === null ? 'Review' : `${topic.score}%`}
                       </span>
-                      <button onClick={() => practiceTopic(topic)} className="text-xs text-zinc-400 hover:text-violet-600 transition-colors shrink-0">
+                      <button onClick={() => practiceTopic(topic)} className="text-xs pp-app-muted hover:text-[var(--pp-cyan)] transition-colors shrink-0">
                         {t('progress.quizLink')}
                       </button>
                     </div>
                   )
                 }) : (
-                  <div className="text-sm text-zinc-500 py-2">No weak topics yet. Complete a few quizzes and your revision targets will appear here.</div>
+                  <div className="text-sm pp-app-subtle py-2">No weak topics yet. Complete a few quizzes and your revision targets will appear here.</div>
                 )}
               </div>
             </div>

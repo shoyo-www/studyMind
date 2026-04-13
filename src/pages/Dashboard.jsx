@@ -14,30 +14,30 @@ function DocCard({ document, onOpen, t, lang }) {
   return (
     <button
       onClick={onOpen}
-      className="bg-white border border-zinc-100 rounded-xl p-5 text-left hover:border-violet-200 hover:shadow-sm transition-all duration-200 group"
+      className="pp-app-card rounded-2xl p-5 text-left pp-hover-rise transition-all duration-200 group"
     >
-      <div className="w-9 h-10 bg-violet-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-violet-100 transition-colors">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2.5C3 1.67157 3.67157 1 4.5 1H9.5L13 4.5V13.5C13 14.3284 12.3284 15 11.5 15H4.5C3.67157 15 3 14.3284 3 13.5V2.5Z" stroke="#7c3aed" strokeWidth="1.2"/><path d="M9.5 1V4.5H13" stroke="#7c3aed" strokeWidth="1.2" strokeLinejoin="round"/></svg>
+      <div className="w-9 h-10 bg-[rgba(255,118,105,0.12)] rounded-lg flex items-center justify-center mb-4 transition-colors border border-[rgba(255,118,105,0.16)]">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2.5C3 1.67157 3.67157 1 4.5 1H9.5L13 4.5V13.5C13 14.3284 12.3284 15 11.5 15H4.5C3.67157 15 3 14.3284 3 13.5V2.5Z" stroke="#ff7669" strokeWidth="1.2"/><path d="M9.5 1V4.5H13" stroke="#ff7669" strokeWidth="1.2" strokeLinejoin="round"/></svg>
       </div>
-      <div className="text-sm font-medium text-zinc-800 mb-1 truncate">{document.title}</div>
-      <div className="text-xs text-zinc-400 mb-3">
+      <div className="text-sm font-medium text-white mb-1 truncate">{document.title}</div>
+      <div className="text-xs pp-app-muted mb-3">
         {document.total_pages} {t('dashboard.pages')} · {formatRelativeDate(document.created_at, lang)}
       </div>
-      <div className="h-1 bg-zinc-100 rounded-full overflow-hidden">
-        <div className="h-full bg-violet-500 rounded-full" style={{ width: `${document.pct_covered}%` }} />
+      <div className="h-1 bg-white/8 rounded-full overflow-hidden">
+        <div className="h-full rounded-full" style={{ width: `${document.pct_covered}%`, background: 'linear-gradient(90deg, #ff7669, #66f7e2)' }} />
       </div>
-      <div className="text-[11px] text-zinc-400 mt-1.5">{document.pct_covered}% {t('dashboard.covered')}</div>
+      <div className="text-[11px] pp-app-muted mt-1.5">{document.pct_covered}% {t('dashboard.covered')}</div>
     </button>
   )
 }
 
 function Notice({ tone = 'neutral', children, action }) {
   const toneClasses = tone === 'error'
-    ? 'bg-red-50 border-red-100 text-red-700'
-    : 'bg-zinc-100 border-zinc-200 text-zinc-600'
+    ? 'bg-[rgba(255,118,105,0.08)] border-[rgba(255,118,105,0.18)] text-[#ffd6cf]'
+    : 'bg-white/5 border-[rgba(130,147,183,0.16)] text-[var(--pp-text-soft)]'
 
   return (
-    <div className={`flex items-center justify-between gap-4 border rounded-xl px-4 py-3 text-sm ${toneClasses}`}>
+    <div className={`flex items-center justify-between gap-4 border rounded-2xl px-4 py-3 text-sm ${toneClasses}`}>
       <span>{children}</span>
       {action}
     </div>
@@ -159,7 +159,7 @@ export default function Dashboard({
         subtitle={documents.length ? t('dashboard.tasksToday', { count: tasks.length }) : 'Upload one study document to start your AI workspace.'}
         showLangSwitcher
         action={(
-          <button onClick={() => setScreen('upload')} className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors">
+          <button onClick={() => setScreen('upload')} className="flex items-center gap-2 px-4 py-2 text-white text-sm rounded-xl transition-colors pp-app-button-primary">
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1V9M6 1L3 4M6 1L9 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M1 10H11" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
             {t('dashboard.uploadNew')}
           </button>
@@ -171,7 +171,7 @@ export default function Dashboard({
             <Notice
               tone="error"
               action={(
-                <button onClick={refreshAppData} className="text-xs px-3 py-1.5 rounded-lg border border-red-200 hover:bg-white transition-colors">
+                <button onClick={refreshAppData} className="text-xs px-3 py-1.5 rounded-lg border border-[rgba(255,118,105,0.2)] hover:bg-white/5 transition-colors">
                   {t('common.retry')}
                 </button>
               )}
@@ -259,14 +259,14 @@ export default function Dashboard({
           if (!card) return null
 
           return (
-            <div className="mb-6 sm:mb-8 rounded-2xl border px-5 py-4 flex items-center justify-between gap-4"
-              style={{ background: card.bg, borderColor: card.border }}>
+            <div className="mb-6 sm:mb-8 rounded-[1.6rem] border px-5 py-4 flex items-center justify-between gap-4 pp-app-card"
+              style={{ borderColor: 'rgba(130,147,183,0.18)' }}>
               <div className="flex items-center gap-4 min-w-0">
                 <div className="text-2xl shrink-0">{card.emoji}</div>
                 <div className="min-w-0">
                   <div className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color: card.labelColor }}>{card.label}</div>
-                  <div className="text-sm font-semibold text-zinc-900 truncate">{card.title}</div>
-                  <div className="text-xs text-zinc-500 truncate mt-0.5">{card.subtitle}</div>
+                  <div className="text-sm font-semibold text-white truncate">{card.title}</div>
+                  <div className="text-xs pp-app-muted truncate mt-0.5">{card.subtitle}</div>
                 </div>
               </div>
               <button onClick={card.onClick}
@@ -283,7 +283,7 @@ export default function Dashboard({
         </div>
 
         <div className="mb-7">
-          <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300 mb-4">{t('dashboard.yourDocuments')}</div>
+          <div className="text-[10px] font-medium uppercase tracking-widest pp-app-muted mb-4">{t('dashboard.yourDocuments')}</div>
 
           {documents.length ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
@@ -296,15 +296,15 @@ export default function Dashboard({
                   lang={lang}
                 />
               ))}
-              <button onClick={() => setScreen('upload')} className="border border-dashed border-zinc-200 rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer hover:border-violet-300 hover:bg-violet-50/40 transition-all min-h-[160px] group">
-                <div className="w-8 h-8 rounded-full border border-dashed border-zinc-200 group-hover:border-violet-300 flex items-center justify-center mb-2"><span className="text-zinc-300 group-hover:text-violet-400 text-lg leading-none">+</span></div>
-                <span className="text-xs text-zinc-300 group-hover:text-violet-400 transition-colors">{t('dashboard.uploadNew')}</span>
+              <button onClick={() => setScreen('upload')} className="border border-dashed pp-app-border rounded-2xl p-5 flex flex-col items-center justify-center cursor-pointer hover:border-[rgba(102,247,226,0.3)] hover:bg-white/5 transition-all min-h-[160px] group">
+                <div className="w-8 h-8 rounded-full border border-dashed pp-app-border flex items-center justify-center mb-2"><span className="pp-app-muted group-hover:text-[var(--pp-cyan)] text-lg leading-none">+</span></div>
+                <span className="text-xs pp-app-muted group-hover:text-[var(--pp-cyan)] transition-colors">{t('dashboard.uploadNew')}</span>
               </button>
             </div>
           ) : (
             <Notice
               action={(
-                <button onClick={() => setScreen('upload')} className="text-xs px-3 py-1.5 rounded-lg border border-zinc-200 hover:bg-white transition-colors">
+                <button onClick={() => setScreen('upload')} className="text-xs px-3 py-1.5 rounded-lg border pp-app-border hover:bg-white/5 transition-colors">
                   {t('dashboard.uploadNew')}
                 </button>
               )}
@@ -315,15 +315,15 @@ export default function Dashboard({
         </div>
 
         <div>
-          <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300 mb-4">{t('dashboard.todaysTasks')}</div>
+          <div className="text-[10px] font-medium uppercase tracking-widest pp-app-muted mb-4">{t('dashboard.todaysTasks')}</div>
           <div className="flex flex-col gap-2">
             {tasks.map((task, index) => (
-              <div key={index} className="flex items-center gap-4 bg-white border border-zinc-100 rounded-xl px-5 py-3.5">
+              <div key={index} className="flex items-center gap-4 pp-app-card rounded-2xl px-5 py-3.5">
                 <div className={`w-2 h-2 rounded-full shrink-0 ${task.color}`} />
-                <div className="flex-1 text-sm text-zinc-500 min-w-0 truncate sm:whitespace-normal sm:overflow-visible">{task.text}</div>
+                <div className="flex-1 text-sm pp-app-subtle min-w-0 truncate sm:whitespace-normal sm:overflow-visible">{task.text}</div>
                 <button
                   onClick={task.onClick}
-                  className={`text-xs px-3.5 py-1.5 rounded-lg font-medium transition-colors shrink-0 ${task.primary ? 'bg-zinc-900 text-white hover:bg-zinc-700' : 'border border-zinc-200 text-zinc-600 hover:bg-zinc-50'}`}
+                  className={`text-xs px-3.5 py-1.5 rounded-xl font-medium transition-colors shrink-0 ${task.primary ? 'pp-app-button-primary' : 'pp-app-button-secondary border'}`}
                 >
                   {task.btn}
                 </button>

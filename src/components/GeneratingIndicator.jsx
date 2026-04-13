@@ -43,19 +43,19 @@ export default function GeneratingIndicator({
           {[0, 1, 2].map((index) => (
             <div
               key={index}
-              className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce"
+              className="w-1.5 h-1.5 rounded-full bg-[var(--pp-coral)] animate-bounce"
               style={{ animationDelay: `${index * 0.15}s` }}
             />
           ))}
         </div>
-        <span className={`font-medium uppercase tracking-[0.18em] text-zinc-400 ${compact ? 'text-[9px]' : 'text-[10px]'}`}>
+        <span className={`font-medium uppercase tracking-[0.18em] pp-app-muted ${compact ? 'text-[9px]' : 'text-[10px]'}`}>
           {label}
         </span>
       </div>
 
-      <div className={`mt-2 flex items-center text-zinc-500 ${compact ? 'text-[12px]' : 'text-sm'}`}>
+      <div className={`mt-2 flex items-center pp-app-subtle ${compact ? 'text-[12px]' : 'text-sm'}`}>
         <span className="truncate">{activeStep.slice(0, charCount) || ' '}</span>
-        <span className="ml-0.5 text-violet-500 animate-pulse">|</span>
+        <span className="ml-0.5 text-[var(--pp-cyan)] animate-pulse">|</span>
       </div>
     </div>
   )

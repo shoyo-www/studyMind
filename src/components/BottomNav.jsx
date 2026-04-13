@@ -29,7 +29,7 @@ const ITEMS = [
 
 export default function BottomNav({ screen, setScreen }) {
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-zinc-100 flex"
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t pp-app-border bg-[rgba(8,14,26,0.94)] backdrop-blur-xl flex"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {ITEMS.map(item => {
         const active = screen === item.id
@@ -39,10 +39,10 @@ export default function BottomNav({ screen, setScreen }) {
             onClick={() => setScreen(item.id)}
             className="flex-1 flex flex-col items-center justify-center py-2.5 gap-1 transition-colors"
           >
-            <span className={`transition-colors ${active ? 'text-violet-600' : 'text-zinc-400'}`}>
+            <span className={`transition-colors ${active ? 'text-[var(--pp-coral)]' : 'text-[var(--pp-text-muted)]'}`}>
               {item.icon}
             </span>
-            <span className={`text-[10px] font-medium transition-colors ${active ? 'text-violet-600' : 'text-zinc-400'}`}>
+            <span className={`text-[10px] font-medium transition-colors ${active ? 'text-[var(--pp-coral)]' : 'text-[var(--pp-text-muted)]'}`}>
               {item.label}
             </span>
           </button>

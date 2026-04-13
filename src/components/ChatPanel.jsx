@@ -196,9 +196,10 @@ export default function ChatPanel({ activeDocument = null }) {
           paddingTop: 18,
           paddingBottom: 18,
           borderRadius: '14px 0 0 14px',
-          background: '#18181B',
-          boxShadow: '-6px 0 24px rgba(24,24,27,0.22)',
+          background: 'rgba(8,14,26,0.96)',
+          boxShadow: '-6px 0 24px rgba(0,0,0,0.34)',
           gap: 8,
+          border: '1px solid rgba(130,147,183,0.16)',
         }}
         title={open ? 'Close PDF Chat' : 'Open PDF Chat'}
       >
@@ -239,29 +240,30 @@ export default function ChatPanel({ activeDocument = null }) {
       <aside
         className={`fixed top-0 right-0 bottom-0 z-40 flex w-[min(440px,calc(100vw-12px))] flex-col transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] lg:relative lg:z-auto lg:w-[min(40vw,420px)] lg:shrink-0 lg:translate-x-0 lg:shadow-none xl:w-[min(38vw,520px)] 2xl:w-[560px] ${open ? 'translate-x-0 shadow-2xl' : 'translate-x-full shadow-none'}`}
         style={{
-          background: '#fff',
-          borderLeft: '1px solid #E4E4E7',
+          background: 'rgba(8,14,26,0.96)',
+          borderLeft: '1px solid rgba(130,147,183,0.16)',
+          backdropFilter: 'blur(18px)',
         }}
       >
         <div
           className="flex items-center gap-3 px-4 py-4 shrink-0"
-          style={{ borderBottom: '1px solid #E4E4E7' }}
+          style={{ borderBottom: '1px solid rgba(130,147,183,0.16)' }}
         >
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-            style={{ background: '#EEF2FF' }}
+            style={{ background: 'rgba(255,118,105,0.12)', border: '1px solid rgba(255,118,105,0.18)' }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M3 2.5C3 1.95 3.45 1.5 4 1.5H9L13 5.5V13C13 13.55 12.55 14 12 14H4C3.45 14 3 13.55 3 13V2.5Z" fill="#EEF2FF" stroke="#6c63ff" strokeWidth="1.2" />
-              <path d="M8 5.5H5.5M10.5 8H5.5M10.5 10.5H5.5" stroke="#6c63ff" strokeWidth="1.2" strokeLinecap="round" />
+              <path d="M3 2.5C3 1.95 3.45 1.5 4 1.5H9L13 5.5V13C13 13.55 12.55 14 12 14H4C3.45 14 3 13.55 3 13V2.5Z" fill="rgba(255,118,105,0.06)" stroke="#ff7669" strokeWidth="1.2" />
+              <path d="M8 5.5H5.5M10.5 8H5.5M10.5 10.5H5.5" stroke="#ff7669" strokeWidth="1.2" strokeLinecap="round" />
             </svg>
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-zinc-900 leading-tight truncate">{headerTitle}</div>
+            <div className="text-sm font-semibold text-white leading-tight truncate">{headerTitle}</div>
             <div className="flex items-center gap-1.5 mt-0.5">
               <div className={`w-1.5 h-1.5 rounded-full ${canChat ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-              <span className="text-[11px] text-zinc-400">{headerSubtitle}</span>
+              <span className="text-[11px] pp-app-muted">{headerSubtitle}</span>
             </div>
           </div>
 
@@ -269,14 +271,14 @@ export default function ChatPanel({ activeDocument = null }) {
             <button
               onClick={clearChat}
               disabled={!activeDocument}
-              className="text-[11px] text-zinc-400 hover:text-zinc-700 px-2 py-1 rounded hover:bg-zinc-100 transition-colors disabled:opacity-40"
+              className="text-[11px] pp-app-muted hover:text-white px-2 py-1 rounded hover:bg-white/5 transition-colors disabled:opacity-40"
               title="Clear chat"
             >
               Clear
             </button>
             <button
               onClick={() => setOpen(false)}
-              className="lg:hidden w-7 h-7 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors text-zinc-400 hover:text-zinc-700"
+              className="lg:hidden w-7 h-7 flex items-center justify-center rounded hover:bg-white/5 transition-colors text-[var(--pp-text-muted)] hover:text-white"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M3 3l8 8M11 3L3 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -286,10 +288,10 @@ export default function ChatPanel({ activeDocument = null }) {
         </div>
 
         {activeDocument && (
-          <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/70 shrink-0">
-            <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-zinc-400">Selected Source</div>
-            <div className="mt-1 text-sm font-medium text-zinc-800 truncate">{activeDocument.title}</div>
-            <div className="mt-1 text-[11px] text-zinc-500">
+          <div className="px-4 py-3 border-b pp-app-border bg-white/5 shrink-0">
+            <div className="text-[10px] font-medium uppercase tracking-[0.22em] pp-app-muted">Selected Source</div>
+            <div className="mt-1 text-sm font-medium text-white truncate">{activeDocument.title}</div>
+            <div className="mt-1 text-[11px] pp-app-subtle">
               {canChat ? 'Answers stay grounded in this PDF only.' : 'Choose a PDF to use notebook-style chat.'}
             </div>
           </div>
@@ -297,7 +299,7 @@ export default function ChatPanel({ activeDocument = null }) {
 
         {currentError && (
           <div className="px-4 pt-4 shrink-0">
-            <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-xs text-red-700">
+            <div className="rounded-xl border border-[rgba(255,118,105,0.2)] bg-[rgba(255,118,105,0.08)] px-3 py-2.5 text-xs text-[#ffd6cf]">
               {currentError}
             </div>
           </div>
@@ -305,10 +307,10 @@ export default function ChatPanel({ activeDocument = null }) {
 
         <div
           className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4"
-          style={{ background: '#FAFAF9' }}
+          style={{ background: 'rgba(255,255,255,0.015)' }}
         >
           {!activeDocument ? (
-            <div className="rounded-2xl border border-dashed border-zinc-200 bg-white px-4 py-5 text-sm text-zinc-500">
+            <div className="rounded-2xl border border-dashed pp-app-border bg-white/3 px-4 py-5 text-sm pp-app-subtle">
               Select a PDF from your study materials and this sidebar will behave like a notebook assistant for that document.
             </div>
           ) : (
@@ -317,7 +319,7 @@ export default function ChatPanel({ activeDocument = null }) {
                 {message.role === 'assistant' && (
                   <div
                     className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
-                    style={{ background: '#EEF2FF', color: '#6c63ff', border: '1px solid #E0E7FF' }}
+                    style={{ background: 'rgba(255,118,105,0.12)', color: '#ff7669', border: '1px solid rgba(255,118,105,0.18)' }}
                   >
                     AI
                   </div>
@@ -325,11 +327,12 @@ export default function ChatPanel({ activeDocument = null }) {
 
                 <div className={`flex flex-col gap-0.5 max-w-[92%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
                   <div
-                    className={`px-3.5 py-2.5 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap break-words ${message.role === 'user' ? 'bg-zinc-900 text-white rounded-br-sm' : 'bg-white border border-zinc-200 text-zinc-700 rounded-bl-sm'}`}
+                    className={`px-3.5 py-2.5 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap break-words ${message.role === 'user' ? 'bg-[linear-gradient(135deg,#ff7669,#e45151)] text-white rounded-br-sm' : 'bg-[rgba(255,255,255,0.04)] border text-[var(--pp-text-soft)] rounded-bl-sm'}`}
+                    style={message.role === 'assistant' ? { borderColor: 'rgba(130,147,183,0.16)' } : undefined}
                   >
                     {message.text}
                   </div>
-                  <span className="text-[10px] text-zinc-400 px-1">{timeFmt(message.time)}</span>
+                  <span className="text-[10px] pp-app-muted px-1">{timeFmt(message.time)}</span>
                 </div>
               </div>
             ))
@@ -339,13 +342,13 @@ export default function ChatPanel({ activeDocument = null }) {
             <div className="flex items-end gap-2 flex-row">
               <div
                 className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
-                style={{ background: '#EEF2FF', color: '#6c63ff', border: '1px solid #E0E7FF' }}
+                style={{ background: 'rgba(255,118,105,0.12)', color: '#ff7669', border: '1px solid rgba(255,118,105,0.18)' }}
               >
                 AI
               </div>
               <div
                 className="px-3 py-3 rounded-2xl"
-                style={{ background: '#fff', border: '1px solid #E4E4E7', borderBottomLeftRadius: 4 }}
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(130,147,183,0.16)', borderBottomLeftRadius: 4 }}
               >
                 <GeneratingIndicator
                   compact
@@ -365,15 +368,15 @@ export default function ChatPanel({ activeDocument = null }) {
         {!!quickPrompts.length && currentMessages.length <= 1 && (
           <div
             className="flex flex-wrap gap-1.5 px-4 py-3 shrink-0"
-            style={{ borderTop: '1px solid #F4F4F5' }}
+            style={{ borderTop: '1px solid rgba(130,147,183,0.12)' }}
           >
             {quickPrompts.map((prompt) => (
               <button
                 key={prompt}
                 onClick={() => send(prompt)}
                 disabled={!canChat || currentLoading}
-                className="text-[11px] px-2.5 py-1.5 rounded-full border text-zinc-500 hover:border-violet-300 hover:text-violet-600 hover:bg-violet-50 transition-all bg-white disabled:opacity-40"
-                style={{ borderColor: '#E4E4E7' }}
+                className="text-[11px] px-2.5 py-1.5 rounded-full border pp-app-subtle hover:text-[var(--pp-cyan)] transition-all bg-white/5 disabled:opacity-40"
+                style={{ borderColor: 'rgba(130,147,183,0.16)' }}
               >
                 {prompt}
               </button>
@@ -382,8 +385,8 @@ export default function ChatPanel({ activeDocument = null }) {
         )}
 
         <div
-          className="flex items-end gap-2 px-4 py-3 shrink-0 bg-white"
-          style={{ borderTop: '1px solid #E4E4E7' }}
+          className="flex items-end gap-2 px-4 py-3 shrink-0 bg-[rgba(8,14,26,0.96)]"
+          style={{ borderTop: '1px solid rgba(130,147,183,0.16)' }}
         >
           <textarea
             ref={inputRef}
@@ -404,7 +407,7 @@ export default function ChatPanel({ activeDocument = null }) {
             }
             disabled={!canChat || currentLoading}
             rows={2}
-            className="flex-1 text-[13px] leading-5 text-zinc-700 placeholder-zinc-300 outline-none resize-none"
+            className="flex-1 text-[13px] leading-5 text-[var(--pp-text)] placeholder-[var(--pp-text-muted)] outline-none resize-none"
             style={{
               border: 'none',
               background: 'transparent',
@@ -417,7 +420,7 @@ export default function ChatPanel({ activeDocument = null }) {
             onClick={() => send()}
             disabled={!input.trim() || !canChat || currentLoading}
             className="w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-30 hover:opacity-85 active:scale-95"
-            style={{ background: '#18181B', flexShrink: 0 }}
+            style={{ background: 'linear-gradient(135deg, #ff7669, #e45151)', flexShrink: 0 }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M1 7h12M13 7L7.5 2M13 7l-5.5 5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />

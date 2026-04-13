@@ -5,15 +5,15 @@ import { useT } from '../i18n'
 import { studyPlanApi } from '../lib/api'
 
 const masteryStyles = {
-  WEAK: 'bg-red-50 text-red-700 border-red-100',
-  IMPROVING: 'bg-amber-50 text-amber-700 border-amber-100',
-  STRONG: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  WEAK: 'bg-red-500/10 text-red-300 border-red-400/20',
+  IMPROVING: 'bg-amber-500/10 text-amber-300 border-amber-400/20',
+  STRONG: 'bg-emerald-500/10 text-emerald-300 border-emerald-400/20',
 }
 
 function TopicChip({ children, tone = 'neutral' }) {
   const toneClass = tone === 'violet'
-    ? 'bg-violet-50 text-violet-700 border-violet-100'
-    : 'bg-zinc-50 text-zinc-600 border-zinc-100'
+    ? 'border-[rgba(255,118,105,0.2)] bg-[rgba(255,118,105,0.12)] text-white'
+    : 'pp-app-chip'
 
   return (
     <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClass}`}>
@@ -24,38 +24,38 @@ function TopicChip({ children, tone = 'neutral' }) {
 
 function ScoreCard({ label, value, hint }) {
   return (
-    <div className="rounded-xl border border-zinc-100 bg-white px-4 py-3">
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">{label}</div>
-      <div className="text-lg font-semibold text-zinc-900">{value}</div>
-      <div className="text-xs text-zinc-500 mt-1">{hint}</div>
+    <div className="rounded-xl pp-app-card px-4 py-3">
+      <div className="text-[10px] font-semibold uppercase tracking-widest pp-app-muted mb-1">{label}</div>
+      <div className="text-lg font-semibold text-white">{value}</div>
+      <div className="text-xs pp-app-subtle mt-1">{hint}</div>
     </div>
   )
 }
 
 function QuestionBlock({ title, subtitle, questions = [], answers = [], setAnswers, disabled = false, accent = 'violet' }) {
   const ringClass = accent === 'rose'
-    ? 'border-rose-200 bg-rose-50 text-rose-700'
-    : 'border-violet-200 bg-violet-50 text-violet-700'
+    ? 'border-rose-400/20 bg-rose-500/10 text-rose-300'
+    : 'border-[rgba(255,118,105,0.2)] bg-[rgba(255,118,105,0.12)] text-white'
 
   return (
-    <div className="rounded-2xl border border-zinc-100 bg-white p-5">
+    <div className="rounded-2xl pp-app-card p-5">
       <div className="mb-5">
-        <div className="text-lg font-semibold text-zinc-900">{title}</div>
-        <div className="text-sm text-zinc-500 mt-1">{subtitle}</div>
+        <div className="text-lg font-semibold text-white">{title}</div>
+        <div className="text-sm pp-app-subtle mt-1">{subtitle}</div>
       </div>
 
       <div className="flex flex-col gap-4">
         {questions.map((question, index) => (
-          <div key={question.id || `${title}-${index}`} className="rounded-xl border border-zinc-100 p-4">
+          <div key={question.id || `${title}-${index}`} className="rounded-xl border pp-app-border bg-white/5 p-4">
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className={`text-[10px] font-semibold uppercase tracking-widest px-2 py-1 rounded-full border ${ringClass}`}>
                 {question.type || 'conceptual'}
               </span>
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-300">
+              <span className="text-[10px] font-semibold uppercase tracking-widest pp-app-muted">
                 {question.topic}
               </span>
             </div>
-            <div className="text-sm font-medium text-zinc-800 mb-3">
+            <div className="text-sm font-medium text-white mb-3">
               {index + 1}. {question.question}
             </div>
             <div className="grid gap-2">
@@ -74,7 +74,7 @@ function QuestionBlock({ title, subtitle, questions = [], answers = [], setAnswe
                         return next
                       })
                     }}
-                    className={`text-left rounded-xl border px-3.5 py-3 text-sm transition-colors ${selected ? ringClass : 'border-zinc-100 text-zinc-700 hover:border-zinc-200 hover:bg-zinc-50'} ${disabled ? 'cursor-default' : ''}`}
+                    className={`text-left rounded-xl border px-3.5 py-3 text-sm transition-colors ${selected ? ringClass : 'border-[rgba(130,147,183,0.16)] text-[var(--pp-text-soft)] hover:border-[rgba(102,247,226,0.28)] hover:bg-white/5'} ${disabled ? 'cursor-default' : ''}`}
                   >
                     {option}
                   </button>
@@ -248,8 +248,8 @@ export default function Missions({
         subtitle={activeDocument ? `${activeDocument.subject} · Day ${planData?.currentDayNumber || 1} of ${totalDays || (analysis?.totalTopics || 0)}` : 'Select a document to open today’s mission.'}
         action={activeDocument && totalDays ? (
           <div className="flex items-center gap-3">
-            <span className="text-xs text-zinc-400">Mission progress</span>
-            <div className="w-24 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+            <span className="text-xs pp-app-muted">Mission progress</span>
+            <div className="w-24 h-1.5 bg-white/8 rounded-full overflow-hidden">
               <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${overallProgress}%` }} />
             </div>
             <span className="text-xs font-medium text-emerald-500">{overallProgress}%</span>
@@ -264,7 +264,7 @@ export default function Missions({
               <button
                 key={document.id}
                 onClick={() => setSelectedDocumentId(document.id)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${activeDocument?.id === document.id ? 'border-violet-200 bg-violet-50 text-violet-700' : 'border-zinc-200 bg-white text-zinc-500 hover:border-violet-200 hover:text-violet-600'}`}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${activeDocument?.id === document.id ? 'pp-app-chip-active' : 'pp-app-chip hover:border-[rgba(102,247,226,0.28)] hover:text-[var(--pp-cyan)]'}`}
               >
                 {document.title}
               </button>
@@ -279,36 +279,36 @@ export default function Missions({
         )}
 
         {!documents.length ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
+          <div className="rounded-2xl pp-app-card px-6 py-10 text-sm pp-app-subtle">
             Upload a PDF first and we will turn it into a daily study system.
           </div>
         ) : !activeDocument ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
+          <div className="rounded-2xl pp-app-card px-6 py-10 text-sm pp-app-subtle">
             Select a document above to open its daily mission.
           </div>
         ) : !activeDocumentIsPdf ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-sm text-zinc-500">
+          <div className="rounded-2xl pp-app-card px-6 py-10 text-sm pp-app-subtle">
             Daily missions are available for PDF documents only right now.
           </div>
         ) : !planData?.plan ? (
-          <div className="rounded-3xl border border-zinc-100 bg-white px-6 py-7 sm:px-8">
+          <div className="rounded-3xl pp-app-card px-6 py-7 sm:px-8">
             <div className="max-w-2xl">
               <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-500 mb-2">Study Coach</div>
-              <div className="text-2xl font-semibold text-zinc-900 mb-3">Build the roadmap first, then start daily missions</div>
-              <p className="text-sm text-zinc-600 leading-relaxed mb-6">
+              <div className="text-2xl font-semibold text-white mb-3">Build the roadmap first, then start daily missions</div>
+              <p className="text-sm pp-app-subtle leading-relaxed mb-6">
                 We need one study plan before we can generate today&apos;s mission. Once that is ready, this tab becomes your daily 20-minute session space.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={handleGeneratePlan}
                   disabled={generatingPlan}
-                  className="px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-sm hover:bg-zinc-700 transition-colors disabled:opacity-60"
+                  className="px-5 py-2.5 rounded-xl text-white text-sm transition-colors disabled:opacity-60 pp-app-button-primary"
                 >
                   Build my study plan
                 </button>
                 <button
                   onClick={() => setScreen('roadmap')}
-                  className="px-5 py-2.5 rounded-xl border border-zinc-200 text-zinc-600 text-sm hover:bg-zinc-50 transition-colors"
+                  className="px-5 py-2.5 rounded-xl border pp-app-border text-[var(--pp-text-soft)] text-sm hover:bg-white/5 transition-colors"
                 >
                   Open roadmap
                 </button>
@@ -317,14 +317,14 @@ export default function Missions({
           </div>
         ) : (
           <div className="space-y-5">
-            <div className="rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-emerald-50 px-6 py-6">
+            <div className="rounded-3xl border border-[rgba(255,118,105,0.18)] bg-[linear-gradient(135deg,rgba(255,118,105,0.14),rgba(102,247,226,0.05))] px-6 py-6">
               <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-500 mb-2">Today&apos;s Mission</div>
-                  <div className="text-2xl font-semibold text-zinc-900">
+                  <div className="text-2xl font-semibold text-white">
                     Day {planData.currentDayNumber}: {currentMission?.missionTitle || planData.currentDay?.summary}
                   </div>
-                  <p className="text-sm text-zinc-600 mt-2 max-w-2xl leading-relaxed">
+                  <p className="text-sm pp-app-subtle mt-2 max-w-2xl leading-relaxed">
                     {currentMission?.missionSummary || planData.currentDay?.focusReason}
                   </p>
                 </div>
@@ -336,7 +336,7 @@ export default function Missions({
                   )}
                   <button
                     onClick={() => setScreen('roadmap')}
-                    className="px-4 py-2 rounded-lg border border-violet-200 bg-white text-violet-700 text-sm hover:bg-violet-50 transition-colors"
+                    className="px-4 py-2 rounded-lg border pp-app-border bg-white/5 text-[var(--pp-cyan)] text-sm hover:bg-white/10 transition-colors"
                   >
                     View roadmap
                   </button>
@@ -349,27 +349,27 @@ export default function Missions({
                 ))}
               </div>
 
-              <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-4 text-sm text-zinc-700 leading-relaxed">
-                <div className="font-semibold text-zinc-900 mb-1">Exactly what to do next</div>
+              <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-4 text-sm pp-app-subtle leading-relaxed">
+                <div className="font-semibold text-white mb-1">Exactly what to do next</div>
                 {currentMission?.exactNextStep || 'Generate today’s mission and start with the first concept card.'}
               </div>
             </div>
 
             {currentMission ? (
               <>
-                <div className="rounded-2xl border border-zinc-100 bg-white p-5">
-                  <div className="text-lg font-semibold text-zinc-900 mb-1">Concept Learning · 10 min</div>
-                  <div className="text-sm text-zinc-500 mb-5">Read these one by one, say the main idea out loud, then move straight into the quick quiz.</div>
+                <div className="rounded-2xl pp-app-card p-5">
+                  <div className="text-lg font-semibold text-white mb-1">Concept Learning · 10 min</div>
+                  <div className="text-sm pp-app-subtle mb-5">Read these one by one, say the main idea out loud, then move straight into the quick quiz.</div>
                   <div className="grid gap-3">
                     {currentMission.conceptLearning.map((item, index) => (
-                      <div key={`${item.topic}-${index}`} className="rounded-2xl border border-zinc-100 p-4">
+                      <div key={`${item.topic}-${index}`} className="rounded-2xl border pp-app-border bg-white/5 p-4">
                         <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <span className="text-sm font-semibold text-zinc-900">{item.topic}</span>
+                          <span className="text-sm font-semibold text-white">{item.topic}</span>
                           <TopicChip>{index + 1} / {currentMission.conceptLearning.length}</TopicChip>
                         </div>
-                        <div className="text-sm text-zinc-700 leading-relaxed mb-2">{item.simpleExplanation}</div>
-                        <div className="text-xs text-violet-700 mb-1">{item.memoryHook}</div>
-                        <div className="text-xs text-zinc-500">{item.nextAction}</div>
+                        <div className="text-sm pp-app-subtle leading-relaxed mb-2">{item.simpleExplanation}</div>
+                        <div className="text-xs text-[var(--pp-cyan)] mb-1">{item.memoryHook}</div>
+                        <div className="text-xs pp-app-muted">{item.nextAction}</div>
                       </div>
                     ))}
                   </div>
@@ -395,14 +395,14 @@ export default function Missions({
                 />
 
                 {!currentSession?.completed_at && (
-                  <div className="rounded-2xl border border-zinc-100 bg-white p-5">
-                    <div className="text-sm text-zinc-600 mb-4">
+                  <div className="rounded-2xl pp-app-card p-5">
+                    <div className="text-sm pp-app-subtle mb-4">
                       Finish all answers, then submit the mission so we can mark topics as <span className="font-semibold text-red-500">WEAK</span>, <span className="font-semibold text-amber-600">IMPROVING</span>, or <span className="font-semibold text-emerald-600">STRONG</span> and adjust what comes next.
                     </div>
                     <button
                       onClick={handleSubmitMission}
                       disabled={!missionReadyToSubmit || submittingMission}
-                      className="px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-sm hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                      className="px-5 py-2.5 rounded-xl text-white text-sm transition-colors disabled:opacity-50 pp-app-button-primary"
                     >
                       Submit today&apos;s mission
                     </button>
@@ -410,17 +410,17 @@ export default function Missions({
                 )}
               </>
             ) : (
-              <div className="rounded-2xl border border-zinc-100 bg-white px-6 py-10 text-sm text-zinc-500">
+              <div className="rounded-2xl pp-app-card px-6 py-10 text-sm pp-app-subtle">
                 We&apos;re preparing today&apos;s 20-minute mission now.
               </div>
             )}
 
             {missionResult && (
-              <div className="rounded-3xl border border-zinc-100 bg-white p-6">
+              <div className="rounded-3xl pp-app-card p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
                   <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Session Feedback</div>
-                    <div className="text-2xl font-semibold text-zinc-900">{missionResult.feedback?.headline || 'Session complete'}</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-widest pp-app-muted mb-2">Session Feedback</div>
+                    <div className="text-2xl font-semibold text-white">{missionResult.feedback?.headline || 'Session complete'}</div>
                   </div>
                   <div className="grid grid-cols-3 gap-3 min-w-[240px]">
                     <ScoreCard label="Quick Quiz" value={`${missionResult.quickQuiz?.pct || 0}%`} hint="Fast check" />
@@ -430,20 +430,20 @@ export default function Missions({
                 </div>
 
                 <div className="grid gap-3">
-                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-4">
-                    <div className="text-sm font-semibold text-emerald-900 mb-1">What you did well</div>
-                    <div className="text-sm text-emerald-800 leading-relaxed">{missionResult.feedback?.whatWentWell}</div>
+                  <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-4">
+                    <div className="text-sm font-semibold text-emerald-200 mb-1">What you did well</div>
+                    <div className="text-sm text-emerald-100/90 leading-relaxed">{missionResult.feedback?.whatWentWell}</div>
                   </div>
-                  <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4">
-                    <div className="text-sm font-semibold text-amber-900 mb-1">What needs work</div>
-                    <div className="text-sm text-amber-800 leading-relaxed">{missionResult.feedback?.needsImprovement}</div>
+                  <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-4">
+                    <div className="text-sm font-semibold text-amber-200 mb-1">What needs work</div>
+                    <div className="text-sm text-amber-100/90 leading-relaxed">{missionResult.feedback?.needsImprovement}</div>
                   </div>
-                  <div className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-4">
-                    <div className="text-sm font-semibold text-violet-900 mb-1">What to focus on next</div>
-                    <div className="text-sm text-violet-800 leading-relaxed mb-2">{missionResult.feedback?.focusNext}</div>
-                    <div className="text-sm text-violet-800 leading-relaxed font-medium">{missionResult.feedback?.tomorrowPreview}</div>
+                  <div className="rounded-2xl border border-[rgba(255,118,105,0.2)] bg-[rgba(255,118,105,0.1)] px-4 py-4">
+                    <div className="text-sm font-semibold text-white mb-1">What to focus on next</div>
+                    <div className="text-sm text-[var(--pp-text-soft)] leading-relaxed mb-2">{missionResult.feedback?.focusNext}</div>
+                    <div className="text-sm text-[var(--pp-text)] leading-relaxed font-medium">{missionResult.feedback?.tomorrowPreview}</div>
                   </div>
-                  <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4 text-sm text-zinc-700">
+                  <div className="rounded-2xl border pp-app-border bg-white/5 px-4 py-4 text-sm pp-app-subtle">
                     {missionResult.feedback?.exactNextStep}
                   </div>
                 </div>

@@ -19,7 +19,7 @@ export default function Upload({
   const [lastDocumentId, setLastDocumentId] = useState(null)
 
   const formats = [
-    { label: 'PDF', color: 'bg-violet-50 text-violet-600 border-violet-100' },
+    { label: 'PDF', color: 'bg-[rgba(255,118,105,0.12)] text-[var(--pp-coral)] border-[rgba(255,118,105,0.18)]' },
   ]
 
   const autoFeatures = [
@@ -150,14 +150,14 @@ export default function Upload({
           }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-2xl px-8 py-14 text-center transition-all mb-6 ${uploading ? 'opacity-80' : 'cursor-pointer'} ${dragging ? 'border-violet-400 bg-violet-50' : 'border-zinc-200 hover:border-violet-200 hover:bg-violet-50/30'}`}
+          className={`border-2 border-dashed rounded-[1.8rem] px-8 py-14 text-center transition-all mb-6 pp-app-card ${uploading ? 'opacity-80' : 'cursor-pointer'} ${dragging ? 'border-[var(--pp-cyan)] bg-[rgba(102,247,226,0.08)]' : 'border-[rgba(130,147,183,0.18)] hover:border-[rgba(255,118,105,0.26)] hover:bg-white/5'}`}
           onClick={() => !uploading && fileInputRef.current?.click()}
         >
-          <div className="w-12 h-12 bg-white border border-zinc-100 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3V13M10 3L7 6M10 3L13 6" stroke="#a1a1aa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3.5 15H16.5" stroke="#a1a1aa" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <div className="w-12 h-12 bg-white/5 border pp-app-border rounded-xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3V13M10 3L7 6M10 3L13 6" stroke="#9eabc7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3.5 15H16.5" stroke="#9eabc7" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </div>
-          <p className="font-display font-semibold text-zinc-700 text-base mb-1">{t('upload.dropzone')}</p>
-          <p className="text-sm text-zinc-400 mb-5">{t('upload.dropzoneSub')}</p>
+          <p className="font-display font-semibold text-white text-base mb-1">{t('upload.dropzone')}</p>
+          <p className="text-sm pp-app-muted mb-5">{t('upload.dropzoneSub')}</p>
           <button
             type="button"
             disabled={uploading}
@@ -165,14 +165,14 @@ export default function Upload({
               event.stopPropagation()
               fileInputRef.current?.click()
             }}
-            className="px-5 py-2 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-60"
+            className="px-5 py-2 text-white text-sm rounded-xl transition-colors disabled:opacity-60 pp-app-button-primary"
           >
             {t('upload.chooseFile')}
           </button>
           {uploading && (
             <div className="mt-5">
-              <div className="w-full h-2 bg-zinc-100 rounded-full overflow-hidden">
-                <div className="h-full bg-violet-500 rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+              <div className="w-full h-2 bg-white/8 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%`, background: 'linear-gradient(90deg, #ff7669, #66f7e2)' }} />
               </div>
             </div>
           )}
@@ -189,13 +189,13 @@ export default function Upload({
         )}
 
         {error && (
-          <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 rounded-xl border border-[rgba(255,118,105,0.2)] bg-[rgba(255,118,105,0.08)] px-4 py-3 text-sm text-[#ffd6cf]">
             {error}
           </div>
         )}
 
         {successMessage && (
-          <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-xl border border-[rgba(102,247,226,0.2)] bg-[rgba(102,247,226,0.08)] px-4 py-3 text-sm text-[var(--pp-cyan)]">
             <div>{successMessage}</div>
             {lastDocumentId && (
               <div className="mt-3 flex gap-2">
@@ -204,7 +204,7 @@ export default function Upload({
                     setSelectedDocumentId(lastDocumentId)
                     setScreen('dashboard')
                   }}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-white border border-emerald-200 hover:bg-emerald-50 transition-colors"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-[rgba(102,247,226,0.18)] hover:bg-white/10 transition-colors"
                 >
                   Open assistant
                 </button>
@@ -213,7 +213,7 @@ export default function Upload({
                     setSelectedDocumentId(lastDocumentId)
                     setScreen('roadmap')
                   }}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-white border border-emerald-200 hover:bg-emerald-50 transition-colors"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-[rgba(102,247,226,0.18)] hover:bg-white/10 transition-colors"
                 >
                   View roadmap
                 </button>
@@ -222,7 +222,7 @@ export default function Upload({
                     setSelectedDocumentId(lastDocumentId)
                     setScreen('flashcards')
                   }}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-white border border-emerald-200 hover:bg-emerald-50 transition-colors"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-[rgba(102,247,226,0.18)] hover:bg-white/10 transition-colors"
                 >
                   Open flashcards
                 </button>
@@ -232,7 +232,7 @@ export default function Upload({
         )}
 
         <div className="mb-8">
-          <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300 mb-3">{t('upload.formats')}</div>
+          <div className="text-[10px] font-medium uppercase tracking-widest pp-app-muted mb-3">{t('upload.formats')}</div>
           <div className="flex flex-wrap gap-2">
             {formats.map((format) => (
               <span key={format.label} className={`text-xs px-3 py-1.5 rounded-full border font-medium ${format.color}`}>{format.label}</span>
@@ -241,14 +241,14 @@ export default function Upload({
         </div>
 
         <div>
-          <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-300 mb-3">{t('upload.autoGenerate')}</div>
+          <div className="text-[10px] font-medium uppercase tracking-widest pp-app-muted mb-3">{t('upload.autoGenerate')}</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {autoFeatures.map((feature) => (
-              <div key={feature.title} className="flex gap-3.5 bg-white border border-zinc-100 rounded-xl p-4">
-                <div className="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center shrink-0 text-base">{feature.icon}</div>
+              <div key={feature.title} className="flex gap-3.5 pp-app-card rounded-2xl p-4">
+                <div className="w-8 h-8 bg-[rgba(255,118,105,0.12)] rounded-lg flex items-center justify-center shrink-0 text-base border border-[rgba(255,118,105,0.18)]">{feature.icon}</div>
                 <div>
-                  <div className="text-sm font-medium text-zinc-800">{feature.title}</div>
-                  <div className="text-xs text-zinc-400 mt-0.5 leading-relaxed">{feature.desc}</div>
+                  <div className="text-sm font-medium text-white">{feature.title}</div>
+                  <div className="text-xs pp-app-muted mt-0.5 leading-relaxed">{feature.desc}</div>
                 </div>
               </div>
             ))}
