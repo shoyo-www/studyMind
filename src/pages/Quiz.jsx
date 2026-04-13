@@ -618,14 +618,14 @@ export default function Quiz({
                 <button
                   onClick={prev}
                   disabled={qIdx === 0}
-                  className="px-4 py-2 border border-zinc-200 text-zinc-600 text-sm rounded-lg hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 border pp-app-border text-[var(--pp-text-soft)] text-sm rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50"
                 >
                   {t('quiz.previous')}
                 </button>
                 <button
                   onClick={next}
                   disabled={selected === null}
-                  className="px-5 py-2 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                  className="px-5 py-2 text-white text-sm rounded-lg transition-colors disabled:opacity-50 pp-app-button-primary"
                 >
                   {qIdx + 1 < questions.length ? t('quiz.next') : t('quiz.seeResults')}
                 </button>
